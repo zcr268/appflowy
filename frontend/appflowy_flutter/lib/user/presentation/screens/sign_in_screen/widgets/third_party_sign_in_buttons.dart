@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'package:appflowy/generated/flowy_svgs.g.dart';
 import 'package:appflowy/generated/locale_keys.g.dart';
 import 'package:appflowy/user/application/sign_in_bloc.dart';
@@ -8,14 +10,11 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flowy_infra/size.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ThirdPartySignInButtons extends StatelessWidget {
   /// Used in DesktopSignInScreen, MobileSignInScreen and SettingThirdPartyLogin
-  const ThirdPartySignInButtons({
-    super.key,
-  });
+  const ThirdPartySignInButtons({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,37 +28,53 @@ class ThirdPartySignInButtons extends StatelessWidget {
         ? MediaQuery.of(context).platformBrightness == Brightness.dark
         : themeModeFromCubit == ThemeMode.dark;
 
-    return Column(
-      children: [
-        _ThirdPartySignInButton(
-          key: const Key('signInWithGoogleButton'),
-          icon: FlowySvgs.google_mark_xl,
-          labelText: LocaleKeys.signIn_LogInWithGoogle.tr(),
-          onPressed: () {
-            _signInWithGoogle(context);
-          },
-        ),
-        const VSpace(8),
-        _ThirdPartySignInButton(
-          icon: isDarkMode
-              ? FlowySvgs.github_mark_white_xl
-              : FlowySvgs.github_mark_black_xl,
-          labelText: LocaleKeys.signIn_LogInWithGithub.tr(),
-          onPressed: () {
-            _signInWithGithub(context);
-          },
-        ),
-        const VSpace(8),
-        _ThirdPartySignInButton(
-          icon: isDarkMode
-              ? FlowySvgs.discord_mark_white_xl
-              : FlowySvgs.discord_mark_blurple_xl,
-          labelText: LocaleKeys.signIn_LogInWithDiscord.tr(),
-          onPressed: () {
-            _signInWithDiscord(context);
-          },
-        ),
-      ],
+    return BlocBuilder<SignInBloc, SignInState>(
+      builder: (context, state) {
+        final (googleText, githubText, discordText) = switch (state.loginType) {
+          LoginType.signIn => (
+              LocaleKeys.signIn_signInWithGoogle.tr(),
+              LocaleKeys.signIn_signInWithGithub.tr(),
+              LocaleKeys.signIn_signInWithDiscord.tr()
+            ),
+          LoginType.signUp => (
+              LocaleKeys.signIn_signUpWithGoogle.tr(),
+              LocaleKeys.signIn_signUpWithGithub.tr(),
+              LocaleKeys.signIn_signUpWithDiscord.tr()
+            ),
+        };
+        return Column(
+          children: [
+            _ThirdPartySignInButton(
+              key: const Key('signInWithGoogleButton'),
+              icon: FlowySvgs.google_mark_xl,
+              labelText: googleText,
+              onPressed: () {
+                _signInWithGoogle(context);
+              },
+            ),
+            const VSpace(8),
+            _ThirdPartySignInButton(
+              icon: isDarkMode
+                  ? FlowySvgs.github_mark_white_xl
+                  : FlowySvgs.github_mark_black_xl,
+              labelText: githubText,
+              onPressed: () {
+                _signInWithGithub(context);
+              },
+            ),
+            const VSpace(8),
+            _ThirdPartySignInButton(
+              icon: isDarkMode
+                  ? FlowySvgs.discord_mark_white_xl
+                  : FlowySvgs.discord_mark_blurple_xl,
+              labelText: discordText,
+              onPressed: () {
+                _signInWithDiscord(context);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -138,20 +153,20 @@ class _DesktopSignInButton extends StatelessWidget {
           ),
         ),
         style: ButtonStyle(
-          overlayColor: MaterialStateProperty.resolveWith<Color?>(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>(
             (states) {
-              if (states.contains(MaterialState.hovered)) {
+              if (states.contains(WidgetState.hovered)) {
                 return style.colorScheme.onSecondaryContainer;
               }
               return null;
             },
           ),
-          shape: MaterialStateProperty.all(
+          shape: WidgetStateProperty.all(
             const RoundedRectangleBorder(
               borderRadius: Corners.s6Border,
             ),
           ),
-          side: MaterialStateProperty.all(
+          side: WidgetStateProperty.all(
             BorderSide(
               color: style.dividerColor,
             ),

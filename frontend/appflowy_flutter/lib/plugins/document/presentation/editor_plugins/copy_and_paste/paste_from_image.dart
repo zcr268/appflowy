@@ -21,7 +21,11 @@ extension PasteFromImage on EditorState {
     'gif',
   ];
 
-  Future<bool> pasteImage(String format, Uint8List imageBytes) async {
+  Future<bool> pasteImage(
+    String format,
+    Uint8List imageBytes,
+    String documentId,
+  ) async {
     if (!supportedImageFormats.contains(format)) {
       return false;
     }
@@ -53,17 +57,10 @@ extension PasteFromImage on EditorState {
       await File(copyToPath).writeAsBytes(imageBytes);
       final String? path;
 
-      if (context.mounted) {
-        showSnackBarMessage(
-          context,
-          LocaleKeys.document_imageBlock_imageIsUploading.tr(),
-        );
-      }
-
       if (isLocalMode) {
         path = await saveImageToLocalStorage(copyToPath);
       } else {
-        final result = await saveImageToCloudStorage(copyToPath);
+        final result = await saveImageToCloudStorage(copyToPath, documentId);
 
         final errorMessage = result.$2;
 

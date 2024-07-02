@@ -2,33 +2,39 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use client_api::entity::billing_dto::{
+  SubscriptionPlan, SubscriptionStatus, WorkspaceSubscriptionPlan, WorkspaceSubscriptionStatus,
+};
 use client_api::entity::workspace_dto::{
-  CreateWorkspaceMember, CreateWorkspaceParam, PatchWorkspaceParam, WorkspaceMemberChangeset,
-  WorkspaceMemberInvitation,
+  CreateWorkspaceParam, PatchWorkspaceParam, WorkspaceMemberChangeset, WorkspaceMemberInvitation,
 };
 use client_api::entity::{
-  AFRole, AFWorkspace, AFWorkspaceInvitation, AuthProvider, CollabParams, CreateCollabParams,
+  AFRole, AFWorkspace, AFWorkspaceInvitation, AFWorkspaceSettings, AFWorkspaceSettingsChange,
+  AuthProvider, CollabParams, CreateCollabParams, QueryWorkspaceMember,
 };
 use client_api::entity::{QueryCollab, QueryCollabParams};
 use client_api::{Client, ClientConfiguration};
 use collab_entity::{CollabObject, CollabType};
 use parking_lot::RwLock;
+use tracing::instrument;
 
 use flowy_error::{ErrorCode, FlowyError, FlowyResult};
 use flowy_user_pub::cloud::{UserCloudService, UserCollabParams, UserUpdate, UserUpdateReceiver};
 use flowy_user_pub::entities::{
   AFCloudOAuthParams, AuthResponse, Role, UpdateUserProfileParams, UserCredentials, UserProfile,
   UserWorkspace, WorkspaceInvitation, WorkspaceInvitationStatus, WorkspaceMember,
+  WorkspaceSubscription, WorkspaceUsage,
 };
 use lib_infra::box_any::BoxAny;
 use lib_infra::future::FutureResult;
 use uuid::Uuid;
 
-use crate::af_cloud::define::USER_SIGN_IN_URL;
+use crate::af_cloud::define::{ServerUser, USER_SIGN_IN_URL};
 use crate::af_cloud::impls::user::dto::{
   af_update_from_update_params, from_af_workspace_member, to_af_role, user_profile_from_af_profile,
 };
 use crate::af_cloud::impls::user::util::encryption_type_from_profile;
+use crate::af_cloud::impls::util::check_request_workspace_id_is_match;
 use crate::af_cloud::{AFCloudClient, AFServer};
 
 use super::dto::{from_af_workspace_invitation_status, to_workspace_invitation_status};
@@ -36,13 +42,19 @@ use super::dto::{from_af_workspace_invitation_status, to_workspace_invitation_st
 pub(crate) struct AFCloudUserAuthServiceImpl<T> {
   server: T,
   user_change_recv: RwLock<Option<tokio::sync::mpsc::Receiver<UserUpdate>>>,
+  user: Arc<dyn ServerUser>,
 }
 
 impl<T> AFCloudUserAuthServiceImpl<T> {
-  pub(crate) fn new(server: T, user_change_recv: tokio::sync::mpsc::Receiver<UserUpdate>) -> Self {
+  pub(crate) fn new(
+    server: T,
+    user_change_recv: tokio::sync::mpsc::Receiver<UserUpdate>,
+    user: Arc<dyn ServerUser>,
+  ) -> Self {
     Self {
       server,
       user_change_recv: RwLock::new(Some(user_change_recv)),
+      user,
     }
   }
 }
@@ -166,16 +178,27 @@ where
     })
   }
 
+  #[instrument(level = "debug", skip_all)]
   fn get_user_profile(
     &self,
     _credential: UserCredentials,
   ) -> FutureResult<UserProfile, FlowyError> {
     let try_get_client = self.server.try_get_client();
+    let cloned_user = self.user.clone();
     FutureResult::new(async move {
+      let expected_workspace_id = cloned_user.workspace_id()?;
       let client = try_get_client?;
       let profile = client.get_profile().await?;
       let token = client.get_token()?;
       let profile = user_profile_from_af_profile(token, profile)?;
+
+      // Discard the response if the user has switched to a new workspace. This avoids updating the
+      // user profile with potentially outdated information when the workspace ID no longer matches.
+      check_request_workspace_id_is_match(
+        &expected_workspace_id,
+        &cloned_user,
+        "get user profile",
+      )?;
       Ok(profile)
     })
   }
@@ -195,28 +218,6 @@ where
     FutureResult::new(async move {
       let workspaces = try_get_client?.get_workspaces().await?;
       to_user_workspaces(workspaces.0)
-    })
-  }
-
-  #[allow(deprecated)]
-  fn add_workspace_member(
-    &self,
-    user_email: String,
-    workspace_id: String,
-  ) -> FutureResult<(), FlowyError> {
-    let try_get_client = self.server.try_get_client();
-    FutureResult::new(async move {
-      // TODO(zack): add_workspace_members will be deprecated after finishing the invite logic. Don't forget to remove the #[allow(deprecated)]
-      try_get_client?
-        .add_workspace_members(
-          workspace_id,
-          vec![CreateWorkspaceMember {
-            email: user_email,
-            role: AFRole::Member,
-          }],
-        )
-        .await?;
-      Ok(())
     })
   }
 
@@ -315,6 +316,24 @@ where
     })
   }
 
+  fn get_workspace_member(
+    &self,
+    workspace_id: String,
+    uid: i64,
+  ) -> FutureResult<WorkspaceMember, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let query = QueryWorkspaceMember {
+        workspace_id: workspace_id.clone(),
+        uid,
+      };
+      let member = client.get_workspace_member(query).await?;
+      Ok(from_af_workspace_member(member))
+    })
+  }
+
+  #[instrument(level = "debug", skip_all)]
   fn get_user_awareness_doc_state(
     &self,
     _uid: i64,
@@ -324,17 +343,19 @@ where
     let workspace_id = workspace_id.to_string();
     let object_id = object_id.to_string();
     let try_get_client = self.server.try_get_client();
-    FutureResult::new(async {
+    let cloned_user = self.user.clone();
+    FutureResult::new(async move {
       let params = QueryCollabParams {
-        workspace_id,
-        inner: QueryCollab {
-          object_id,
-          collab_type: CollabType::UserAwareness,
-        },
+        workspace_id: workspace_id.clone(),
+        inner: QueryCollab::new(object_id, CollabType::UserAwareness),
       };
-
       let resp = try_get_client?.get_collab(params).await?;
-      Ok(resp.doc_state.to_vec())
+      check_request_workspace_id_is_match(
+        &workspace_id,
+        &cloned_user,
+        "get user awareness object",
+      )?;
+      Ok(resp.encode_collab.doc_state.to_vec())
     })
   }
 
@@ -356,10 +377,10 @@ where
     FutureResult::new(async move {
       let client = try_get_client?;
       let params = CreateCollabParams {
-        workspace_id: collab_object.workspace_id.clone(),
-        object_id: collab_object.object_id.clone(),
+        workspace_id: collab_object.workspace_id,
+        object_id: collab_object.object_id,
+        collab_type: collab_object.collab_type,
         encoded_collab_v1: data,
-        collab_type: collab_object.collab_type.clone(),
       };
       client.create_collab(params).await?;
       Ok(())
@@ -376,10 +397,12 @@ where
     FutureResult::new(async move {
       let params = objects
         .into_iter()
-        .map(|object| CollabParams {
-          object_id: object.object_id,
-          encoded_collab_v1: object.encoded_collab,
-          collab_type: object.collab_type,
+        .map(|object| {
+          CollabParams::new(
+            object.object_id,
+            u8::from(object.collab_type).into(),
+            object.encoded_collab,
+          )
         })
         .collect::<Vec<_>>();
       try_get_client?
@@ -449,6 +472,133 @@ where
       Ok(())
     })
   }
+
+  fn subscribe_workspace(
+    &self,
+    workspace_id: String,
+    recurring_interval: flowy_user_pub::entities::RecurringInterval,
+    workspace_subscription_plan: flowy_user_pub::entities::SubscriptionPlan,
+    success_url: String,
+  ) -> FutureResult<String, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    let workspace_id = workspace_id.to_string();
+    FutureResult::new(async move {
+      let subscription_plan = to_workspace_subscription_plan(workspace_subscription_plan)?;
+      let client = try_get_client?;
+      let payment_link = client
+        .create_subscription(
+          &workspace_id,
+          to_recurring_interval(recurring_interval),
+          subscription_plan,
+          &success_url,
+        )
+        .await?;
+      Ok(payment_link)
+    })
+  }
+
+  fn get_workspace_member_info(
+    &self,
+    workspace_id: &str,
+    uid: i64,
+  ) -> FutureResult<WorkspaceMember, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    let workspace_id = workspace_id.to_string();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let params = QueryWorkspaceMember {
+        workspace_id: workspace_id.to_string(),
+        uid,
+      };
+      let member = client.get_workspace_member(params).await?;
+      let role = match member.role {
+        AFRole::Owner => Role::Owner,
+        AFRole::Member => Role::Member,
+        AFRole::Guest => Role::Guest,
+      };
+      Ok(WorkspaceMember {
+        email: member.email,
+        role,
+        name: member.name,
+        avatar_url: member.avatar_url,
+      })
+    })
+  }
+
+  fn get_workspace_subscriptions(&self) -> FutureResult<Vec<WorkspaceSubscription>, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let workspace_subscriptions = client
+        .list_subscription()
+        .await?
+        .into_iter()
+        .map(to_workspace_subscription)
+        .collect();
+      Ok(workspace_subscriptions)
+    })
+  }
+
+  fn cancel_workspace_subscription(&self, workspace_id: String) -> FutureResult<(), FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      client.cancel_subscription(&workspace_id).await?;
+      Ok(())
+    })
+  }
+
+  fn get_workspace_usage(&self, workspace_id: String) -> FutureResult<WorkspaceUsage, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let usage = client.get_billing_workspace_usage(&workspace_id).await?;
+      Ok(WorkspaceUsage {
+        member_count: usage.member_count,
+        member_count_limit: usage.member_count_limit,
+        total_blob_bytes: usage.total_blob_bytes,
+        total_blob_bytes_limit: usage.total_blob_bytes_limit,
+      })
+    })
+  }
+
+  fn get_billing_portal_url(&self) -> FutureResult<String, FlowyError> {
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let url = client.get_portal_session_link().await?;
+      Ok(url)
+    })
+  }
+
+  fn get_workspace_setting(
+    &self,
+    workspace_id: &str,
+  ) -> FutureResult<AFWorkspaceSettings, FlowyError> {
+    let workspace_id = workspace_id.to_string();
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let settings = client.get_workspace_settings(&workspace_id).await?;
+      Ok(settings)
+    })
+  }
+
+  fn update_workspace_setting(
+    &self,
+    workspace_id: &str,
+    workspace_settings: AFWorkspaceSettingsChange,
+  ) -> FutureResult<AFWorkspaceSettings, FlowyError> {
+    let workspace_id = workspace_id.to_string();
+    let try_get_client = self.server.try_get_client();
+    FutureResult::new(async move {
+      let client = try_get_client?;
+      let settings = client
+        .update_workspace_settings(&workspace_id, &workspace_settings)
+        .await?;
+      Ok(settings)
+    })
+  }
 }
 
 async fn get_admin_client(client: &Arc<AFCloudClient>) -> FlowyResult<Client> {
@@ -510,7 +660,7 @@ fn to_user_workspace(af_workspace: AFWorkspace) -> UserWorkspace {
     id: af_workspace.workspace_id.to_string(),
     name: af_workspace.workspace_name,
     created_at: af_workspace.created_at,
-    workspace_database_object_id: af_workspace.database_storage_id.to_string(),
+    database_indexer_id: af_workspace.database_storage_id.to_string(),
     icon: af_workspace.icon,
   }
 }
@@ -544,4 +694,51 @@ fn oauth_params_from_box_any(any: BoxAny) -> Result<AFCloudOAuthParams, FlowyErr
   Ok(AFCloudOAuthParams {
     sign_in_url: sign_in_url.to_string(),
   })
+}
+
+fn to_recurring_interval(
+  r: flowy_user_pub::entities::RecurringInterval,
+) -> client_api::entity::billing_dto::RecurringInterval {
+  match r {
+    flowy_user_pub::entities::RecurringInterval::Month => {
+      client_api::entity::billing_dto::RecurringInterval::Month
+    },
+    flowy_user_pub::entities::RecurringInterval::Year => {
+      client_api::entity::billing_dto::RecurringInterval::Year
+    },
+  }
+}
+
+fn to_workspace_subscription_plan(
+  s: flowy_user_pub::entities::SubscriptionPlan,
+) -> Result<SubscriptionPlan, FlowyError> {
+  match s {
+    flowy_user_pub::entities::SubscriptionPlan::Pro => Ok(SubscriptionPlan::Pro),
+    flowy_user_pub::entities::SubscriptionPlan::Team => Ok(SubscriptionPlan::Team),
+    flowy_user_pub::entities::SubscriptionPlan::None => Err(FlowyError::new(
+      ErrorCode::InvalidParams,
+      "Invalid subscription plan",
+    )),
+  }
+}
+
+fn to_workspace_subscription(s: WorkspaceSubscriptionStatus) -> WorkspaceSubscription {
+  WorkspaceSubscription {
+    workspace_id: s.workspace_id,
+    subscription_plan: match s.workspace_plan {
+      WorkspaceSubscriptionPlan::Pro => flowy_user_pub::entities::SubscriptionPlan::Pro,
+      WorkspaceSubscriptionPlan::Team => flowy_user_pub::entities::SubscriptionPlan::Team,
+      _ => flowy_user_pub::entities::SubscriptionPlan::None,
+    },
+    recurring_interval: match s.recurring_interval {
+      client_api::entity::billing_dto::RecurringInterval::Month => {
+        flowy_user_pub::entities::RecurringInterval::Month
+      },
+      client_api::entity::billing_dto::RecurringInterval::Year => {
+        flowy_user_pub::entities::RecurringInterval::Year
+      },
+    },
+    is_active: matches!(s.subscription_status, SubscriptionStatus::Active),
+    canceled_at: s.canceled_at,
+  }
 }

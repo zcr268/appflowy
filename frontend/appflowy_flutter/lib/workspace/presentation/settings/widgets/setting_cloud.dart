@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'package:appflowy/env/cloud_env.dart';
 import 'package:appflowy/env/env.dart';
 import 'package:appflowy/generated/flowy_svgs.g.dart';
@@ -6,6 +8,9 @@ import 'package:appflowy/mobile/presentation/bottom_sheet/bottom_sheet.dart';
 import 'package:appflowy/mobile/presentation/widgets/widgets.dart';
 import 'package:appflowy/startup/startup.dart';
 import 'package:appflowy/workspace/application/settings/cloud_setting_bloc.dart';
+import 'package:appflowy/workspace/presentation/settings/shared/af_dropdown_menu_entry.dart';
+import 'package:appflowy/workspace/presentation/settings/shared/settings_body.dart';
+import 'package:appflowy/workspace/presentation/settings/shared/settings_dropdown.dart';
 import 'package:appflowy/workspace/presentation/settings/widgets/setting_local_cloud.dart';
 import 'package:appflowy/workspace/presentation/widgets/dialogs.dart';
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -13,7 +18,6 @@ import 'package:appflowy_popover/appflowy_popover.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -37,7 +41,9 @@ class SettingCloud extends StatelessWidget {
             create: (context) => CloudSettingBloc(cloudType),
             child: BlocBuilder<CloudSettingBloc, CloudSettingState>(
               builder: (context, state) {
-                return Column(
+                return SettingsBody(
+                  title: LocaleKeys.settings_menu_cloudSettings.tr(),
+                  autoSeparate: false,
                   children: [
                     if (Env.enableCustomCloud)
                       Row(
@@ -47,19 +53,16 @@ class SettingCloud extends StatelessWidget {
                               LocaleKeys.settings_menu_cloudServerType.tr(),
                             ),
                           ),
-                          CloudTypeSwitcher(
-                            cloudType: state.cloudType,
-                            onSelected: (newCloudType) {
-                              context.read<CloudSettingBloc>().add(
-                                    CloudSettingEvent.updateCloudType(
-                                      newCloudType,
-                                    ),
-                                  );
-                            },
+                          Flexible(
+                            child: CloudTypeSwitcher(
+                              cloudType: state.cloudType,
+                              onSelected: (type) => context
+                                  .read<CloudSettingBloc>()
+                                  .add(CloudSettingEvent.updateCloudType(type)),
+                            ),
                           ),
                         ],
                       ),
-                    const VSpace(8),
                     _viewFromCloudType(state.cloudType),
                   ],
                 );
@@ -67,9 +70,7 @@ class SettingCloud extends StatelessWidget {
             ),
           );
         } else {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
       },
     );
@@ -78,21 +79,13 @@ class SettingCloud extends StatelessWidget {
   Widget _viewFromCloudType(AuthenticatorType cloudType) {
     switch (cloudType) {
       case AuthenticatorType.local:
-        return SettingLocalCloud(
-          restartAppFlowy: restartAppFlowy,
-        );
+        return SettingLocalCloud(restartAppFlowy: restartAppFlowy);
       case AuthenticatorType.supabase:
-        return SettingSupabaseCloudView(
-          restartAppFlowy: restartAppFlowy,
-        );
+        return SettingSupabaseCloudView(restartAppFlowy: restartAppFlowy);
       case AuthenticatorType.appflowyCloud:
-        return AppFlowyCloudViewSetting(
-          restartAppFlowy: restartAppFlowy,
-        );
+        return AppFlowyCloudViewSetting(restartAppFlowy: restartAppFlowy);
       case AuthenticatorType.appflowyCloudSelfHost:
-        return CustomAppFlowyCloudView(
-          restartAppFlowy: restartAppFlowy,
-        );
+        return CustomAppFlowyCloudView(restartAppFlowy: restartAppFlowy);
       case AuthenticatorType.appflowyCloudDevelop:
         return AppFlowyCloudViewSetting(
           serverURL: "http://localhost",
@@ -126,64 +119,57 @@ class CloudTypeSwitcher extends StatelessWidget {
       return isDevelopMode || element != AuthenticatorType.appflowyCloudDevelop;
     }).toList();
     return PlatformExtension.isDesktopOrWeb
-        ? AppFlowyPopover(
-            direction: PopoverDirection.bottomWithRightAligned,
-            child: FlowyTextButton(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              titleFromCloudType(cloudType),
-              fontColor: Theme.of(context).colorScheme.onBackground,
-              fillColor: Colors.transparent,
-              onPressed: () {},
-            ),
-            popupBuilder: (BuildContext context) {
-              return ListView.builder(
-                shrinkWrap: true,
-                itemBuilder: (context, index) {
-                  return CloudTypeItem(
-                    cloudType: values[index],
-                    currentCloudtype: cloudType,
-                    onSelected: onSelected,
-                  );
-                },
-                itemCount: values.length,
-              );
+        ? SettingsDropdown(
+            selectedOption: cloudType,
+            onChanged: (type) {
+              if (type != cloudType) {
+                NavigatorAlertDialog(
+                  title: LocaleKeys.settings_menu_changeServerTip.tr(),
+                  confirm: () async {
+                    onSelected(type);
+                  },
+                  hideCancelButton: true,
+                ).show(context);
+              }
             },
+            options: values
+                .map(
+                  (type) => buildDropdownMenuEntry(
+                    context,
+                    value: type,
+                    label: titleFromCloudType(type),
+                  ),
+                )
+                .toList(),
           )
         : FlowyButton(
-            text: FlowyText(
-              titleFromCloudType(cloudType),
-            ),
+            text: FlowyText(titleFromCloudType(cloudType)),
             useIntrinsicWidth: true,
             rightIcon: const Icon(
               Icons.chevron_right,
             ),
-            onTap: () {
-              showMobileBottomSheet(
-                context,
-                showHeader: true,
-                showDragHandle: true,
-                showDivider: false,
-                showCloseButton: false,
-                title: LocaleKeys.settings_menu_cloudServerType.tr(),
-                builder: (context) {
-                  return Column(
-                    children: values
-                        .mapIndexed(
-                          (i, e) => FlowyOptionTile.checkbox(
-                            text: titleFromCloudType(values[i]),
-                            isSelected: cloudType == values[i],
-                            onTap: () {
-                              onSelected(e);
-                              context.pop();
-                            },
-                            showBottomBorder: i == values.length - 1,
-                          ),
-                        )
-                        .toList(),
-                  );
-                },
-              );
-            },
+            onTap: () => showMobileBottomSheet(
+              context,
+              showHeader: true,
+              showDragHandle: true,
+              showDivider: false,
+              title: LocaleKeys.settings_menu_cloudServerType.tr(),
+              builder: (context) => Column(
+                children: values
+                    .mapIndexed(
+                      (i, e) => FlowyOptionTile.checkbox(
+                        text: titleFromCloudType(values[i]),
+                        isSelected: cloudType == values[i],
+                        onTap: () {
+                          onSelected(e);
+                          context.pop();
+                        },
+                        showBottomBorder: i == values.length - 1,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           );
   }
 }

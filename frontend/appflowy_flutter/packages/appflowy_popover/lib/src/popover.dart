@@ -178,9 +178,7 @@ class PopoverState extends State<Popover> {
     _rootEntry.addEntry(context, this, newEntry, widget.asBarrier);
   }
 
-  void close({
-    bool notify = true,
-  }) {
+  void close({bool notify = true}) {
     if (_rootEntry.contains(this)) {
       _rootEntry.removeEntry(this);
       if (notify) {
@@ -287,9 +285,14 @@ class PopoverContainer extends StatefulWidget {
     if (context is StatefulElement && context.state is PopoverContainerState) {
       return context.state as PopoverContainerState;
     }
-    final PopoverContainerState? result =
-        context.findAncestorStateOfType<PopoverContainerState>();
-    return result!;
+    return context.findAncestorStateOfType<PopoverContainerState>()!;
+  }
+
+  static PopoverContainerState? maybeOf(BuildContext context) {
+    if (context is StatefulElement && context.state is PopoverContainerState) {
+      return context.state as PopoverContainerState;
+    }
+    return context.findAncestorStateOfType<PopoverContainerState>();
   }
 }
 

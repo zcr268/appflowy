@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart';
+
 import 'package:appflowy/workspace/application/tabs/tabs_bloc.dart';
 import 'package:appflowy/workspace/presentation/home/home_sizes.dart';
 import 'package:appflowy/workspace/presentation/home/tabs/flowy_tab.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class TabsManager extends StatefulWidget {
@@ -57,9 +58,9 @@ class _TabsManagerState extends State<TabsManager>
 
             return Container(
               alignment: Alignment.bottomLeft,
-              height: HomeSizes.tabBarHeigth,
+              height: HomeSizes.tabBarHeight,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
 
               /// TODO(Xazin): Custom Reorderable TabBar

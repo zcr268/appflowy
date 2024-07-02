@@ -15,10 +15,10 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.5.5
+version: 0.6.2
 
 environment:
-  flutter: ">=3.19.0"
+  flutter: ">=3.22.0"
   sdk: ">=3.3.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
@@ -41,22 +41,19 @@ dependencies:
   flowy_svg:
     path: packages/flowy_svg
   appflowy_board:
+    # path: ../../../appflowy-board
     git:
       url: https://github.com/AppFlowy-IO/appflowy-board.git
-      ref: 15a3a50
+      ref: 8a6434ae3d02624b614a010af80f775db11bf22e
   appflowy_result:
     path: packages/appflowy_result
-  appflowy_editor:
   appflowy_editor_plugins:
-    git:
-      url: https://github.com/LucasXu0/appflowy_editor_plugins
-      ref: "8f238f2"
-
+  appflowy_editor:
   appflowy_popover:
     path: packages/appflowy_popover
 
   #  third party packages
-  intl: ^0.18.0
+  intl: ^0.19.0
   time: ^2.1.3
   equatable: ^2.0.5
   freezed_annotation: ^2.2.0
@@ -70,12 +67,12 @@ dependencies:
   expandable: ^5.0.1
   flutter_colorpicker: ^1.0.3
   highlight: ^0.7.0
-  package_info_plus: ^5.0.1
+  package_info_plus: ^6.0.0
   url_launcher: ^6.1.11
   clipboard: ^0.1.3
   connectivity_plus: ^5.0.2
   easy_localization: ^3.0.2
-  device_info_plus: ^9.0.1
+  device_info_plus: ^10.1.0
   fluttertoast: ^8.2.2
   json_annotation: ^4.8.1
   table_calendar: ^3.0.9
@@ -95,7 +92,6 @@ dependencies:
     git:
       url: https://github.com/Xazin/flutter_calendar_view
       ref: "6fe0c98"
-  window_manager: ^0.3.4
   http: ^1.0.0
   path: ^1.8.3
   mocktail: ^1.0.1
@@ -120,6 +116,7 @@ dependencies:
   # TODO: Consider implementing custom package
   # to gather notification handling for all platforms
   local_notifier: ^0.1.5
+
   app_links: ^3.5.0
   flutter_slidable: ^3.0.0
   image_picker: ^1.0.4
@@ -133,6 +130,25 @@ dependencies:
   sheet:
   file: ^7.0.0
   avatar_stack: ^1.2.0
+  numerus: ^2.1.2
+  flutter_animate: ^4.5.0
+  permission_handler: ^11.3.1
+  flutter_chat_ui: ^1.6.13
+  flutter_chat_types: ^3.6.2
+  scaled_app: ^2.3.0
+  auto_size_text_field: ^2.2.3
+  reorderable_tabbar: ^1.0.6
+  shimmer: ^3.0.0
+  isolates: ^3.0.3+8
+  markdown_widget: ^2.3.2+6
+
+  # Window Manager for MacOS and Linux
+  window_manager: ^0.3.9
+
+  # BitsDojo Window for Windows
+  bitsdojo_window: ^0.1.6
+
+  flutter_highlight: ^0.7.0
 
 dev_dependencies:
   flutter_lints: ^3.0.1
@@ -142,10 +158,10 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  build_runner: ^2.4.4
+  build_runner: ^2.4.9
   freezed: ^2.4.7
   bloc_test: ^9.1.2
-  json_serializable: ^6.7.0
+  json_serializable: ^6.7.1
   envied_generator: ^0.5.2
 
   plugin_platform_interface: any
@@ -169,7 +185,13 @@ dependency_overrides:
   appflowy_editor:
     git:
       url: https://github.com/AppFlowy-IO/appflowy-editor.git
-      ref: "6d12761"
+      ref: "e8ee051"
+
+  appflowy_editor_plugins:
+    git:
+      url: https://github.com/AppFlowy-IO/AppFlowy-plugins.git
+      path: "packages/appflowy_editor_plugins"
+      ref: "87af520732deae1138c12a4c33a62ae56b2aa81f"
 
   sheet:
     git:
@@ -177,7 +199,7 @@ dependency_overrides:
       ref: e44458d
       path: sheet
 
-  uuid: ^4.1.0
+  uuid: ^4.4.0
 
   flutter_cache_manager:
     git:
@@ -237,6 +259,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/appearance/
+    - assets/images/built_in_cover_images/
     - assets/flowy_icons/
     - assets/flowy_icons/16x/
     - assets/flowy_icons/24x/

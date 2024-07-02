@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 import 'package:appflowy/generated/flowy_svgs.g.dart';
 import 'package:appflowy/generated/locale_keys.g.dart';
 import 'package:appflowy/plugins/database/application/cell/cell_controller.dart';
@@ -18,12 +21,11 @@ import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flowy_infra/theme_extension.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'accessory/cell_accessory.dart';
 import '../cell/editable_cell_builder.dart';
+
+import 'accessory/cell_accessory.dart';
 
 /// Display the row properties in a list. Only used in [RowDetailPage].
 class RowPropertyList extends StatelessWidget {
@@ -314,17 +316,17 @@ class ToggleHiddenFieldsVisibilityButton extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: double.infinity),
       child: TextButton.icon(
         style: Theme.of(context).textButtonTheme.style?.copyWith(
-              shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+              shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                 RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.0),
                 ),
               ),
-              overlayColor: MaterialStateProperty.all<Color>(
+              overlayColor: WidgetStateProperty.all<Color>(
                 Theme.of(context).hoverColor,
               ),
               alignment: AlignmentDirectional.centerStart,
               splashFactory: NoSplash.splashFactory,
-              padding: const MaterialStatePropertyAll(
+              padding: const WidgetStatePropertyAll(
                 EdgeInsets.symmetric(vertical: 14, horizontal: 6),
               ),
             ),
@@ -363,14 +365,8 @@ class CreateRowFieldButton extends StatefulWidget {
 }
 
 class _CreateRowFieldButtonState extends State<CreateRowFieldButton> {
-  late PopoverController popoverController;
+  final PopoverController popoverController = PopoverController();
   FieldPB? createdField;
-
-  @override
-  void initState() {
-    popoverController = PopoverController();
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {

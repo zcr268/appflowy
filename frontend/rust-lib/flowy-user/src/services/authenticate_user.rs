@@ -5,25 +5,26 @@ use crate::services::sqlite_sql::user_sql::vacuum_database;
 use collab_integrate::CollabKVDB;
 
 use flowy_error::{internal_error, ErrorCode, FlowyError, FlowyResult};
-use flowy_sqlite::kv::StorePreferences;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_sqlite::DBConnection;
 use flowy_user_pub::entities::UserWorkspace;
 use flowy_user_pub::session::Session;
+use std::path::PathBuf;
 use std::sync::{Arc, Weak};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 const SQLITE_VACUUM_042: &str = "sqlite_vacuum_042_version";
 
 pub struct AuthenticateUser {
-  pub(crate) user_config: UserConfig,
+  pub user_config: UserConfig,
   pub(crate) database: Arc<UserDB>,
   pub(crate) user_paths: UserPaths,
-  store_preferences: Arc<StorePreferences>,
+  store_preferences: Arc<KVStorePreferences>,
   session: Arc<parking_lot::RwLock<Option<Session>>>,
 }
 
 impl AuthenticateUser {
-  pub fn new(user_config: UserConfig, store_preferences: Arc<StorePreferences>) -> Self {
+  pub fn new(user_config: UserConfig, store_preferences: Arc<KVStorePreferences>) -> Self {
     let user_paths = UserPaths::new(user_config.storage_path.clone());
     let database = Arc::new(UserDB::new(user_paths.clone()));
     let session = Arc::new(parking_lot::RwLock::new(None));
@@ -66,6 +67,11 @@ impl AuthenticateUser {
     Ok(session.user_workspace.id)
   }
 
+  pub fn workspace_database_object_id(&self) -> FlowyResult<String> {
+    let session = self.get_session()?;
+    Ok(session.user_workspace.database_indexer_id.clone())
+  }
+
   pub fn get_collab_db(&self, uid: i64) -> FlowyResult<Weak<CollabKVDB>> {
     self
       .database
@@ -77,6 +83,15 @@ impl AuthenticateUser {
     self.database.get_connection(uid)
   }
 
+  pub fn get_index_path(&self) -> PathBuf {
+    let uid = self.user_id().unwrap_or(0);
+    PathBuf::from(self.user_paths.user_data_dir(uid)).join("indexes")
+  }
+
+  pub fn get_application_root_dir(&self) -> &str {
+    self.user_paths.root()
+  }
+
   pub fn close_db(&self) -> FlowyResult<()> {
     let session = self.get_session()?;
     info!("Close db for user: {}", session.user_id);
@@ -85,16 +100,17 @@ impl AuthenticateUser {
   }
 
   pub fn set_session(&self, session: Option<Session>) -> Result<(), FlowyError> {
-    debug!("Set current user session: {:?}", session);
     match &session {
       None => {
-        self.session.write().take();
+        let removed_session = self.session.write().take();
+        info!("remove session: {:?}", removed_session);
         self
           .store_preferences
           .remove(self.user_config.session_cache_key.as_ref());
         Ok(())
       },
       Some(session) => {
+        info!("Set current session: {:?}", session);
         self.session.write().replace(session.clone());
         self
           .store_preferences

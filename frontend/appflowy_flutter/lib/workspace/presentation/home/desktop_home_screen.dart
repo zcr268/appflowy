@@ -9,11 +9,13 @@ import 'package:appflowy/user/application/auth/auth_service.dart';
 import 'package:appflowy/user/application/reminder/reminder_bloc.dart';
 import 'package:appflowy/workspace/application/favorite/favorite_bloc.dart';
 import 'package:appflowy/workspace/application/home/home_bloc.dart';
-import 'package:appflowy/workspace/application/home/home_service.dart';
 import 'package:appflowy/workspace/application/home/home_setting_bloc.dart';
 import 'package:appflowy/workspace/application/settings/appearance/appearance_cubit.dart';
 import 'package:appflowy/workspace/application/tabs/tabs_bloc.dart';
+import 'package:appflowy/workspace/application/user/user_workspace_bloc.dart';
 import 'package:appflowy/workspace/application/view/view_ext.dart';
+import 'package:appflowy/workspace/application/view/view_service.dart';
+import 'package:appflowy/workspace/presentation/home/af_focus_manager.dart';
 import 'package:appflowy/workspace/presentation/home/errors/workspace_failed_screen.dart';
 import 'package:appflowy/workspace/presentation/home/hotkeys.dart';
 import 'package:appflowy/workspace/presentation/home/menu/sidebar/sidebar.dart';
@@ -66,28 +68,31 @@ class DesktopHomeScreen extends StatelessWidget {
           return const WorkspaceFailedScreen();
         }
 
-        return MultiBlocProvider(
-          key: ValueKey(userProfile.id),
-          providers: [
-            BlocProvider<ReminderBloc>.value(value: getIt<ReminderBloc>()),
-            BlocProvider<TabsBloc>.value(value: getIt<TabsBloc>()),
-            BlocProvider<HomeBloc>(
-              create: (_) =>
-                  HomeBloc(workspaceSetting)..add(const HomeEvent.initial()),
-            ),
-            BlocProvider<HomeSettingBloc>(
-              create: (_) => HomeSettingBloc(
-                workspaceSetting,
-                context.read<AppearanceSettingsCubit>(),
-                context.widthPx,
-              )..add(const HomeSettingEvent.initial()),
-            ),
-            BlocProvider<FavoriteBloc>(
-              create: (context) =>
-                  FavoriteBloc()..add(const FavoriteEvent.initial()),
-            ),
-          ],
-          child: HomeHotKeys(
+        return AFFocusManager(
+          child: MultiBlocProvider(
+            key: ValueKey(userProfile.id),
+            providers: [
+              BlocProvider.value(
+                value: getIt<ReminderBloc>()
+                  ..add(const ReminderEvent.started()),
+              ),
+              BlocProvider<TabsBloc>.value(value: getIt<TabsBloc>()),
+              BlocProvider<HomeBloc>(
+                create: (_) =>
+                    HomeBloc(workspaceSetting)..add(const HomeEvent.initial()),
+              ),
+              BlocProvider<HomeSettingBloc>(
+                create: (_) => HomeSettingBloc(
+                  workspaceSetting,
+                  context.read<AppearanceSettingsCubit>(),
+                  context.widthPx,
+                )..add(const HomeSettingEvent.initial()),
+              ),
+              BlocProvider<FavoriteBloc>(
+                create: (context) =>
+                    FavoriteBloc()..add(const FavoriteEvent.initial()),
+              ),
+            ],
             child: Scaffold(
               floatingActionButton: enableMemoryLeakDetect
                   ? const FloatingActionButton(
@@ -115,9 +120,20 @@ class DesktopHomeScreen extends StatelessWidget {
                 },
                 child: BlocBuilder<HomeSettingBloc, HomeSettingState>(
                   buildWhen: (previous, current) => previous != current,
-                  builder: (context, state) => FlowyContainer(
-                    Theme.of(context).colorScheme.surface,
-                    child: _buildBody(context, userProfile, workspaceSetting),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => UserWorkspaceBloc(userProfile: userProfile)
+                      ..add(const UserWorkspaceEvent.initial()),
+                    child: HomeHotKeys(
+                      userProfile: userProfile,
+                      child: FlowyContainer(
+                        Theme.of(context).colorScheme.surface,
+                        child: _buildBody(
+                          context,
+                          userProfile,
+                          workspaceSetting,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -140,8 +156,9 @@ class DesktopHomeScreen extends StatelessWidget {
     final homeStack = HomeStack(
       layout: layout,
       delegate: DesktopHomeScreenStackAdaptor(context),
+      userProfile: userProfile,
     );
-    final menu = _buildHomeSidebar(
+    final sidebar = _buildHomeSidebar(
       context,
       layout: layout,
       userProfile: userProfile,
@@ -153,7 +170,7 @@ class DesktopHomeScreen extends StatelessWidget {
     return _layoutWidgets(
       layout: layout,
       homeStack: homeStack,
-      homeMenu: menu,
+      sidebar: sidebar,
       editPanel: editPanel,
       bubble: const QuestionBubble(),
       homeMenuResizer: homeMenuResizer,
@@ -236,7 +253,7 @@ class DesktopHomeScreen extends StatelessWidget {
 
   Widget _layoutWidgets({
     required HomeLayout layout,
-    required Widget homeMenu,
+    required Widget sidebar,
     required Widget homeStack,
     required Widget editPanel,
     required Widget bubble,
@@ -270,7 +287,7 @@ class DesktopHomeScreen extends StatelessWidget {
               bottom: 0,
               width: layout.editPanelWidth,
             ),
-        homeMenu
+        sidebar
             .animatedPanelX(
               closeX: -layout.menuWidth,
               isClosed: !layout.showMenu,
@@ -293,8 +310,8 @@ class DesktopHomeScreenStackAdaptor extends HomeStackDelegate {
 
   @override
   void didDeleteStackWidget(ViewPB view, int? index) {
-    HomeService.readApp(appId: view.parentViewId).then((result) {
-      result.fold(
+    ViewBackendService.getView(view.parentViewId).then(
+      (result) => result.fold(
         (parentView) {
           final List<ViewPB> views = parentView.childViews;
           if (views.isNotEmpty) {
@@ -311,7 +328,7 @@ class DesktopHomeScreenStackAdaptor extends HomeStackDelegate {
               .add(TabsEvent.openPlugin(plugin: BlankPagePlugin()));
         },
         (err) => Log.error(err),
-      );
-    });
+      ),
+    );
   }
 }

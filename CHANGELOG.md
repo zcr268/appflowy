@@ -1,9 +1,74 @@
 # Release Notes
-## Version 0.5.5 - 04/22/2024
+## Version 0.6.2 - 01/07/2024
 ### New Features
-- TBD
 ### Bug Fixes
-- TBD
+
+## Version 0.6.1 - 22/06/2024
+### New Features
+- Introduced the "Space" feature to help you organize your pages more efficiently.
+### Bug Fixes
+- Resolved shortcut conflicts on the board page.
+- Resolved an issue where underscores could cause the editor to freeze.
+
+## Version 0.6.0 - 19/06/2024
+### New Features
+- Introduced the "Space" feature to help you organize your pages more efficiently.
+### Bug Fixes
+- Resolved shortcut conflicts on the board page.
+- Resolved an issue where underscores could cause the editor to freeze.
+
+## Version 0.5.9 - 06/06/2024
+### New Features
+- Revamped the sidebar for both Desktop and Mobile.
+- Added support for embedding videos in documents.
+- Introduced a hotkey (Cmd/Ctrl + 0) to reset the app scale.
+- Supported searching the workspace by page title.
+### Bug Fixes
+- Fixed the issue preventing the use of Backspace to delete words in Kanban boards.
+
+## Version 0.5.8 - 05/20/2024
+### New Features
+- Improvement to the Callout block to insert new lines
+- New settings page "Manage data" replaced the "Files" page
+- New settings page "Workspace" replaced the "Appearance" and "Language" pages
+- A custom implementation of a title bar for Windows users
+- Added support for selecting Cards in kanban and performing grouped keyboard shortcuts
+- Added support for default system font family
+- Support for scaling the application up/down using a keyboard shortcut (CMD/CTRL + PLUS/MINUS)
+
+### Bug Fixes
+- Resolved and refined the UI on Mobile
+- Resolved issue with text editing in database
+- Improved appearance of empty text cells in kanban/calendar
+- Resolved an issue where a page's more actions (delete, duplicate) did not work properly
+- Resolved and inconsistency in padding on get started screen on Desktop
+
+## Version 0.5.7 - 05/10/2024
+### Bug Fixes
+- Resolved page opening issue on Android.
+- Fixed text input inconsistency on Kanban board cards.
+
+## Version 0.5.6 - 05/07/2024
+### New Features
+- Team collaboration is live! Add members to your workspace to edit and collaborate on pages together.
+- Collaborate in real time on the same page with other members. Edits made by others will appear instantly.
+- Create multiple workspaces for different kinds of content.
+- Customize your entire page on mobile through the Page Style menu with options for layout, font, font size, emoji, and cover image.
+- Open a row record as a full page.
+### Bug Fixes
+- Resolved issue with setting background color for the Simple Table block.
+- Adjusted toolbar for various screen sizes.
+- Added a request for photo permission before uploading images on mobile.
+- Exported creation and last modification timestamps to CSV.
+
+## Version 0.5.5 - 04/24/2024
+### New Features
+- Improved the display of code blocks with line numbers
+- Added support for signing in using Magic Link
+### Bug Fixes
+- Fixed the database synchronization indicator issue
+- Resolved the issue with opening the mentioned page on mobile
+- Cleared the collaboration status when the user exits AppFlowy
 
 ## Version 0.5.4 - 04/08/2024
 ### New Features
@@ -67,7 +132,7 @@
 - Fixed a bug where newly created rows were not being automatically sorted.
 - Fixed issues related to deleting a sorting field or sort not removing existing sorts properly.
 ### Notes
-- Windows 7, Windows 8, and iOS 11 are not yet supported due to the upgrade to Flutter 3.19.0.
+- Windows 7, Windows 8, and iOS 11 are not yet supported due to the upgrade to Flutter 3.22.0.
 
 ## Version 0.4.9 - 02/17/2024
 ### Bug Fixes

@@ -17,35 +17,27 @@ class CollaboratorAvatarStack extends StatelessWidget {
   });
 
   final List<Widget> avatars;
-
   final Positions? settings;
-
   final InfoWidgetBuilder? infoWidgetBuilder;
-
   final double? width;
-
   final double? height;
-
   final double? borderWidth;
-
   final Color? borderColor;
-
   final Color? backgroundColor;
-
   final Widget Function(int value, BorderSide border) plusWidgetBuilder;
 
   @override
   Widget build(BuildContext context) {
     final settings = this.settings ??
         RestrictedPositions(
-          maxCoverage: 0.3,
-          minCoverage: 0.2,
+          maxCoverage: 0.4,
+          minCoverage: 0.3,
           align: StackAlign.right,
           laying: StackLaying.first,
         );
 
     final border = BorderSide(
-      color: borderColor ?? Theme.of(context).colorScheme.onPrimary,
+      color: borderColor ?? Theme.of(context).dividerColor,
       width: borderWidth ?? 2.0,
     );
 

@@ -1,12 +1,8 @@
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::sync::{Arc, Weak};
-
 use bytes::Bytes;
-use tokio::sync::RwLock;
-
+use collab_entity::EncodedCollab;
 use collab_integrate::collab_builder::AppFlowyCollabBuilder;
 use collab_integrate::CollabKVDB;
+use flowy_chat::chat_manager::ChatManager;
 use flowy_database2::entities::DatabaseLayoutPB;
 use flowy_database2::services::share::csv::CSVFormat;
 use flowy_database2::template::{make_default_board, make_default_calendar, make_default_grid};
@@ -15,49 +11,59 @@ use flowy_document::entities::DocumentDataPB;
 use flowy_document::manager::DocumentManager;
 use flowy_document::parser::json::parser::JsonToDocumentParser;
 use flowy_error::FlowyError;
-use flowy_folder::entities::ViewLayoutPB;
+use flowy_folder::entities::{CreateViewParams, ViewLayoutPB};
 use flowy_folder::manager::{FolderManager, FolderUser};
 use flowy_folder::share::ImportType;
-use flowy_folder::view_operation::{FolderOperationHandler, FolderOperationHandlers, View};
+use flowy_folder::view_operation::{
+  FolderOperationHandler, FolderOperationHandlers, View, ViewData,
+};
 use flowy_folder::ViewLayout;
 use flowy_folder_pub::folder_builder::NestedViewBuilder;
+use flowy_search::folder::indexer::FolderIndexManagerImpl;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_user::services::authenticate_user::AuthenticateUser;
 use lib_dispatch::prelude::ToBytes;
-use lib_infra::async_trait::async_trait;
 use lib_infra::future::FutureResult;
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::sync::{Arc, Weak};
+use tokio::sync::RwLock;
 
 use crate::integrate::server::ServerProvider;
 
 pub struct FolderDepsResolver();
+#[allow(clippy::too_many_arguments)]
 impl FolderDepsResolver {
   pub async fn resolve(
     authenticate_user: Weak<AuthenticateUser>,
-    document_manager: &Arc<DocumentManager>,
-    database_manager: &Arc<DatabaseManager>,
     collab_builder: Arc<AppFlowyCollabBuilder>,
     server_provider: Arc<ServerProvider>,
+    folder_indexer: Arc<FolderIndexManagerImpl>,
+    store_preferences: Arc<KVStorePreferences>,
+    operation_handlers: FolderOperationHandlers,
   ) -> Arc<FolderManager> {
     let user: Arc<dyn FolderUser> = Arc::new(FolderUserImpl {
       authenticate_user: authenticate_user.clone(),
     });
 
-    let handlers = folder_operation_handlers(document_manager.clone(), database_manager.clone());
     Arc::new(
       FolderManager::new(
         user.clone(),
         collab_builder,
-        handlers,
+        operation_handlers,
         server_provider.clone(),
+        folder_indexer,
+        store_preferences,
       )
-      .await
       .unwrap(),
     )
   }
 }
 
-fn folder_operation_handlers(
+pub fn folder_operation_handlers(
   document_manager: Arc<DocumentManager>,
   database_manager: Arc<DatabaseManager>,
+  chat_manager: Arc<ChatManager>,
 ) -> FolderOperationHandlers {
   let mut map: HashMap<ViewLayout, Arc<dyn FolderOperationHandler + Send + Sync>> = HashMap::new();
 
@@ -65,9 +71,11 @@ fn folder_operation_handlers(
   map.insert(ViewLayout::Document, document_folder_operation);
 
   let database_folder_operation = Arc::new(DatabaseFolderOperation(database_manager));
+  let chat_folder_operation = Arc::new(ChatFolderOperation(chat_manager));
   map.insert(ViewLayout::Board, database_folder_operation.clone());
   map.insert(ViewLayout::Grid, database_folder_operation.clone());
   map.insert(ViewLayout::Calendar, database_folder_operation);
+  map.insert(ViewLayout::Chat, chat_folder_operation);
   Arc::new(map)
 }
 
@@ -75,22 +83,27 @@ struct FolderUserImpl {
   authenticate_user: Weak<AuthenticateUser>,
 }
 
-#[async_trait]
-impl FolderUser for FolderUserImpl {
-  fn user_id(&self) -> Result<i64, FlowyError> {
-    self
+impl FolderUserImpl {
+  fn upgrade_user(&self) -> Result<Arc<AuthenticateUser>, FlowyError> {
+    let user = self
       .authenticate_user
       .upgrade()
-      .ok_or(FlowyError::internal().with_context("Unexpected error: UserSession is None"))?
-      .user_id()
+      .ok_or(FlowyError::internal().with_context("Unexpected error: UserSession is None"))?;
+    Ok(user)
+  }
+}
+
+impl FolderUser for FolderUserImpl {
+  fn user_id(&self) -> Result<i64, FlowyError> {
+    self.upgrade_user()?.user_id()
+  }
+
+  fn workspace_id(&self) -> Result<String, FlowyError> {
+    self.upgrade_user()?.workspace_id()
   }
 
   fn collab_db(&self, uid: i64) -> Result<Weak<CollabKVDB>, FlowyError> {
-    self
-      .authenticate_user
-      .upgrade()
-      .ok_or(FlowyError::internal().with_context("Unexpected error: UserSession is None"))?
-      .get_collab_db(uid)
+    self.upgrade_user()?.get_collab_db(uid)
   }
 }
 
@@ -171,17 +184,13 @@ impl FolderOperationHandler for DocumentFolderOperation {
   fn create_view_with_view_data(
     &self,
     user_id: i64,
-    view_id: &str,
-    _name: &str,
-    data: Vec<u8>,
-    layout: ViewLayout,
-    _meta: HashMap<String, String>,
+    params: CreateViewParams,
   ) -> FutureResult<(), FlowyError> {
-    debug_assert_eq!(layout, ViewLayout::Document);
-    let view_id = view_id.to_string();
+    debug_assert_eq!(params.layout, ViewLayoutPB::Document);
+    let view_id = params.view_id.to_string();
     let manager = self.0.clone();
     FutureResult::new(async move {
-      let data = DocumentDataPB::try_from(Bytes::from(data))?;
+      let data = DocumentDataPB::try_from(Bytes::from(params.initial_data))?;
       manager
         .create_document(user_id, &view_id, Some(data.into()))
         .await?;
@@ -221,15 +230,15 @@ impl FolderOperationHandler for DocumentFolderOperation {
     _name: &str,
     _import_type: ImportType,
     bytes: Vec<u8>,
-  ) -> FutureResult<(), FlowyError> {
+  ) -> FutureResult<EncodedCollab, FlowyError> {
     let view_id = view_id.to_string();
     let manager = self.0.clone();
     FutureResult::new(async move {
       let data = DocumentDataPB::try_from(Bytes::from(bytes))?;
-      manager
+      let encoded_collab = manager
         .create_document(uid, &view_id, Some(data.into()))
         .await?;
-      Ok(())
+      Ok(encoded_collab)
     })
   }
 
@@ -291,32 +300,43 @@ impl FolderOperationHandler for DatabaseFolderOperation {
   fn create_view_with_view_data(
     &self,
     _user_id: i64,
-    view_id: &str,
-    name: &str,
-    data: Vec<u8>,
-    layout: ViewLayout,
-    meta: HashMap<String, String>,
+    params: CreateViewParams,
   ) -> FutureResult<(), FlowyError> {
-    match CreateDatabaseExtParams::from_map(meta) {
+    match CreateDatabaseExtParams::from_map(params.meta.clone()) {
       None => {
         let database_manager = self.0.clone();
-        let view_id = view_id.to_string();
+        let view_id = params.view_id.to_string();
         FutureResult::new(async move {
           database_manager
-            .create_database_with_database_data(&view_id, data)
+            .create_database_with_database_data(&view_id, params.initial_data)
             .await?;
           Ok(())
         })
       },
-      Some(params) => {
+      Some(database_params) => {
         let database_manager = self.0.clone();
-        let layout = layout_type_from_view_layout(layout.into());
-        let name = name.to_string();
-        let database_view_id = view_id.to_string();
+
+        let layout = match params.layout {
+          ViewLayoutPB::Board => DatabaseLayoutPB::Board,
+          ViewLayoutPB::Calendar => DatabaseLayoutPB::Calendar,
+          ViewLayoutPB::Grid => DatabaseLayoutPB::Grid,
+          ViewLayoutPB::Document | ViewLayoutPB::Chat => {
+            return FutureResult::new(async move { Err(FlowyError::not_support()) });
+          },
+        };
+        let name = params.name.to_string();
+        let database_view_id = params.view_id.to_string();
+        let database_parent_view_id = params.parent_view_id.to_string();
 
         FutureResult::new(async move {
           database_manager
-            .create_linked_view(name, layout.into(), params.database_id, database_view_id)
+            .create_linked_view(
+              name,
+              layout.into(),
+              database_params.database_id,
+              database_view_id,
+              database_parent_view_id,
+            )
             .await?;
           Ok(())
         })
@@ -346,6 +366,10 @@ impl FolderOperationHandler for DatabaseFolderOperation {
           Err(FlowyError::internal().with_context(format!("Can't handle {:?} layout type", layout)))
         });
       },
+      ViewLayout::Chat => {
+        // TODO(nathan): AI
+        todo!("AI")
+      },
     };
     FutureResult::new(async move {
       let result = database_manager.create_database_with_params(data).await;
@@ -369,7 +393,7 @@ impl FolderOperationHandler for DatabaseFolderOperation {
     _name: &str,
     import_type: ImportType,
     bytes: Vec<u8>,
-  ) -> FutureResult<(), FlowyError> {
+  ) -> FutureResult<EncodedCollab, FlowyError> {
     let database_manager = self.0.clone();
     let view_id = view_id.to_string();
     let format = match import_type {
@@ -383,11 +407,10 @@ impl FolderOperationHandler for DatabaseFolderOperation {
         String::from_utf8(bytes).map_err(|err| FlowyError::internal().with_context(err))
       })
       .await??;
-
-      database_manager
+      let result = database_manager
         .import_csv(view_id, content, format)
         .await?;
-      Ok(())
+      Ok(result.encoded_collab)
     })
   }
 
@@ -408,7 +431,7 @@ impl FolderOperationHandler for DatabaseFolderOperation {
 
   fn did_update_view(&self, old: &View, new: &View) -> FutureResult<(), FlowyError> {
     let database_layout = match new.layout {
-      ViewLayout::Document => {
+      ViewLayout::Document | ViewLayout::Chat => {
         return FutureResult::new(async {
           Err(FlowyError::internal().with_context("Can't handle document layout type"))
         });
@@ -445,11 +468,79 @@ impl CreateDatabaseExtParams {
   }
 }
 
-pub fn layout_type_from_view_layout(layout: ViewLayoutPB) -> DatabaseLayoutPB {
-  match layout {
-    ViewLayoutPB::Grid => DatabaseLayoutPB::Grid,
-    ViewLayoutPB::Board => DatabaseLayoutPB::Board,
-    ViewLayoutPB::Calendar => DatabaseLayoutPB::Calendar,
-    ViewLayoutPB::Document => DatabaseLayoutPB::Grid,
+struct ChatFolderOperation(Arc<ChatManager>);
+impl FolderOperationHandler for ChatFolderOperation {
+  fn open_view(&self, view_id: &str) -> FutureResult<(), FlowyError> {
+    let manager = self.0.clone();
+    let view_id = view_id.to_string();
+    FutureResult::new(async move {
+      manager.open_chat(&view_id).await?;
+      Ok(())
+    })
+  }
+
+  fn close_view(&self, view_id: &str) -> FutureResult<(), FlowyError> {
+    let manager = self.0.clone();
+    let view_id = view_id.to_string();
+    FutureResult::new(async move {
+      manager.close_chat(&view_id).await?;
+      Ok(())
+    })
+  }
+
+  fn delete_view(&self, view_id: &str) -> FutureResult<(), FlowyError> {
+    let manager = self.0.clone();
+    let view_id = view_id.to_string();
+    FutureResult::new(async move {
+      manager.delete_chat(&view_id).await?;
+      Ok(())
+    })
+  }
+
+  fn duplicate_view(&self, _view_id: &str) -> FutureResult<ViewData, FlowyError> {
+    FutureResult::new(async move { Err(FlowyError::not_support()) })
+  }
+
+  fn create_view_with_view_data(
+    &self,
+    _user_id: i64,
+    _params: CreateViewParams,
+  ) -> FutureResult<(), FlowyError> {
+    FutureResult::new(async move { Err(FlowyError::not_support()) })
+  }
+
+  fn create_built_in_view(
+    &self,
+    user_id: i64,
+    view_id: &str,
+    _name: &str,
+    _layout: ViewLayout,
+  ) -> FutureResult<(), FlowyError> {
+    let manager = self.0.clone();
+    let view_id = view_id.to_string();
+    FutureResult::new(async move {
+      manager.create_chat(&user_id, &view_id).await?;
+      Ok(())
+    })
+  }
+
+  fn import_from_bytes(
+    &self,
+    _uid: i64,
+    _view_id: &str,
+    _name: &str,
+    _import_type: ImportType,
+    _bytes: Vec<u8>,
+  ) -> FutureResult<EncodedCollab, FlowyError> {
+    FutureResult::new(async move { Err(FlowyError::not_support()) })
+  }
+
+  fn import_from_file_path(
+    &self,
+    _view_id: &str,
+    _name: &str,
+    _path: String,
+  ) -> FutureResult<(), FlowyError> {
+    FutureResult::new(async move { Err(FlowyError::not_support()) })
   }
 }

@@ -43,13 +43,13 @@ pub async fn sync_supabase_user_data_to_cloud(
     uid,
     &workspace_id,
     device_id,
-    &new_user_session.user_workspace.workspace_database_object_id,
+    &new_user_session.user_workspace.database_indexer_id,
     collab_db,
     user_service.clone(),
   )
   .await;
 
-  let views = folder.lock().get_current_workspace_views();
+  let views = folder.lock().get_views_belong_to(&workspace_id);
   for view in views {
     let view_id = view.id.clone();
     if let Err(err) = sync_view(
@@ -170,6 +170,7 @@ fn sync_view(
           }
         }
       },
+      ViewLayout::Chat => {},
     }
 
     tokio::task::yield_now().await;
@@ -265,11 +266,7 @@ async fn sync_folder(
       .encode_collab_v1(|_| Ok::<(), PersistenceError>(()))?
       .doc_state;
     (
-      MutexFolder::new(Folder::open(
-        uid,
-        Arc::new(MutexCollab::from_collab(collab)),
-        None,
-      )?),
+      MutexFolder::new(Folder::open(uid, Arc::new(MutexCollab::new(collab)), None)?),
       doc_state,
     )
   };
@@ -361,6 +358,7 @@ fn collab_type_from_view_layout(view_layout: &ViewLayout) -> CollabType {
   match view_layout {
     ViewLayout::Document => CollabType::Document,
     ViewLayout::Grid | ViewLayout::Board | ViewLayout::Calendar => CollabType::Database,
+    ViewLayout::Chat => CollabType::Unknown,
   }
 }
 

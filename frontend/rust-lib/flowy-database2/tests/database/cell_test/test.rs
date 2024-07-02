@@ -3,8 +3,8 @@ use std::time::Duration;
 use flowy_database2::entities::FieldType;
 use flowy_database2::services::field::{
   ChecklistCellChangeset, DateCellChangeset, DateCellData, MultiSelectTypeOption,
-  RelationCellChangeset, SelectOptionCellChangeset, SingleSelectTypeOption, StrCellData,
-  URLCellData,
+  RelationCellChangeset, SelectOptionCellChangeset, SingleSelectTypeOption, StringCellData,
+  TimeCellData, URLCellData,
 };
 use lib_infra::box_any::BoxAny;
 
@@ -84,7 +84,7 @@ async fn text_cell_data_test() {
     .await;
 
   for (i, row_cell) in cells.into_iter().enumerate() {
-    let text = StrCellData::from(row_cell.cell.as_ref().unwrap());
+    let text = StringCellData::from(row_cell.cell.as_ref().unwrap());
     match i {
       0 => assert_eq!(text.as_str(), "A"),
       1 => assert_eq!(text.as_str(), ""),
@@ -110,7 +110,10 @@ async fn url_cell_data_test() {
     if let Some(cell) = row_cell.cell.as_ref() {
       let cell = URLCellData::from(cell);
       if i == 0 {
-        assert_eq!(cell.url.as_str(), "https://www.appflowy.io/");
+        assert_eq!(
+          cell.data.as_str(),
+          "AppFlowy website - https://www.appflowy.io"
+        );
       }
     }
   }
@@ -195,5 +198,22 @@ async fn update_updated_at_field_on_other_cell_update() {
       ),
       _ => {},
     }
+  }
+}
+
+#[tokio::test]
+async fn time_cell_data_test() {
+  let test = DatabaseCellTest::new().await;
+  let time_field = test.get_first_field(FieldType::Time);
+  let cells = test
+    .editor
+    .get_cells_for_field(&test.view_id, &time_field.id)
+    .await;
+
+  if let Some(cell) = cells[0].cell.as_ref() {
+    let cell = TimeCellData::from(cell);
+
+    assert!(cell.0.is_some());
+    assert_eq!(cell.0.unwrap_or_default(), 75);
   }
 }

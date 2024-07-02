@@ -1,6 +1,5 @@
 import 'package:appflowy/generated/flowy_svgs.g.dart';
 import 'package:appflowy/generated/locale_keys.g.dart';
-import 'package:appflowy/plugins/base/emoji/emoji_text.dart';
 import 'package:appflowy/plugins/base/icon/icon_picker.dart';
 import 'package:appflowy/startup/startup.dart';
 import 'package:appflowy/workspace/application/favorite/favorite_bloc.dart';
@@ -9,15 +8,18 @@ import 'package:appflowy/workspace/application/sidebar/rename_view/rename_view_b
 import 'package:appflowy/workspace/application/tabs/tabs_bloc.dart';
 import 'package:appflowy/workspace/application/view/prelude.dart';
 import 'package:appflowy/workspace/application/view/view_ext.dart';
+import 'package:appflowy/workspace/presentation/home/home_sizes.dart';
 import 'package:appflowy/workspace/presentation/home/menu/menu_shared_state.dart';
-import 'package:appflowy/workspace/presentation/home/menu/sidebar/rename_view_dialog.dart';
+import 'package:appflowy/workspace/presentation/home/menu/sidebar/shared/rename_view_dialog.dart';
 import 'package:appflowy/workspace/presentation/home/menu/view/draggable_view_item.dart';
 import 'package:appflowy/workspace/presentation/home/menu/view/view_action_type.dart';
 import 'package:appflowy/workspace/presentation/home/menu/view/view_add_button.dart';
 import 'package:appflowy/workspace/presentation/home/menu/view/view_more_action_button.dart';
 import 'package:appflowy/workspace/presentation/widgets/dialogs.dart';
 import 'package:appflowy/workspace/presentation/widgets/rename_view_popover.dart';
+import 'package:appflowy_backend/protobuf/flowy-folder/protobuf.dart';
 import 'package:appflowy_backend/protobuf/flowy-folder/view.pb.dart';
+import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_popover/appflowy_popover.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
@@ -26,14 +28,22 @@ import 'package:flowy_infra_ui/widget/flowy_tooltip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-typedef ViewItemOnSelected = void Function(ViewPB);
+typedef ViewItemOnSelected = void Function(BuildContext context, ViewPB view);
+typedef ViewItemLeftIconBuilder = Widget Function(
+  BuildContext context,
+  ViewPB view,
+);
+typedef ViewItemRightIconsBuilder = List<Widget> Function(
+  BuildContext context,
+  ViewPB view,
+);
 
 class ViewItem extends StatelessWidget {
   const ViewItem({
     super.key,
     required this.view,
     this.parentView,
-    required this.categoryType,
+    required this.spaceType,
     required this.level,
     this.leftPadding = 10,
     required this.onSelected,
@@ -41,15 +51,24 @@ class ViewItem extends StatelessWidget {
     this.isFirstChild = false,
     this.isDraggable = true,
     required this.isFeedback,
-    this.height = 28.0,
-    this.isHoverEnabled = true,
+    this.height = HomeSpaceViewSizes.viewHeight,
+    this.isHoverEnabled = false,
     this.isPlaceholder = false,
+    this.isHovered,
+    this.shouldRenderChildren = true,
+    this.leftIconBuilder,
+    this.rightIconsBuilder,
+    this.shouldLoadChildViews = true,
+    this.isExpandedNotifier,
+    this.extendBuilder,
+    this.disableSelectedStatus,
+    this.shouldIgnoreView,
   });
 
   final ViewPB view;
   final ViewPB? parentView;
 
-  final FolderCategoryType categoryType;
+  final FolderSpaceType spaceType;
 
   // indicate the level of the view item
   // used to calculate the left padding
@@ -83,10 +102,34 @@ class ViewItem extends StatelessWidget {
   // placeholder widget to receive the drop event when moving view across sections.
   final bool isPlaceholder;
 
+  // used for control the expand/collapse icon
+  final ValueNotifier<bool>? isHovered;
+
+  // render the child views of the view
+  final bool shouldRenderChildren;
+
+  // custom the left icon widget, if it's null, the default expand/collapse icon will be used
+  final ViewItemLeftIconBuilder? leftIconBuilder;
+  // custom the right icon widget, if it's null, the default ... and + button will be used
+  final ViewItemRightIconsBuilder? rightIconsBuilder;
+
+  final bool shouldLoadChildViews;
+  final PropertyValueNotifier<bool>? isExpandedNotifier;
+
+  final List<Widget> Function(ViewPB view)? extendBuilder;
+
+  // disable the selected status of the view item
+  final bool? disableSelectedStatus;
+
+  // ignore the views when rendering the child views
+  final bool Function(ViewPB view)? shouldIgnoreView;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ViewBloc(view: view)..add(const ViewEvent.initial()),
+      create: (_) =>
+          ViewBloc(view: view, shouldLoadChildViews: shouldLoadChildViews)
+            ..add(const ViewEvent.initial()),
       child: BlocConsumer<ViewBloc, ViewState>(
         listenWhen: (p, c) =>
             c.lastCreatedView != null &&
@@ -94,15 +137,23 @@ class ViewItem extends StatelessWidget {
         listener: (context, state) =>
             context.read<TabsBloc>().openPlugin(state.lastCreatedView!),
         builder: (context, state) {
+          // filter the child views that should be ignored
+          var childViews = state.view.childViews;
+          if (shouldIgnoreView != null) {
+            childViews = childViews
+                .where((childView) => !shouldIgnoreView!(childView))
+                .toList();
+          }
           return InnerViewItem(
             view: state.view,
             parentView: parentView,
-            childViews: state.view.childViews,
-            categoryType: categoryType,
+            childViews: childViews,
+            spaceType: spaceType,
             level: level,
             leftPadding: leftPadding,
             showActions: state.isEditing,
             isExpanded: state.isExpanded,
+            disableSelectedStatus: disableSelectedStatus,
             onSelected: onSelected,
             onTertiarySelected: onTertiarySelected,
             isFirstChild: isFirstChild,
@@ -111,6 +162,13 @@ class ViewItem extends StatelessWidget {
             height: height,
             isHoverEnabled: isHoverEnabled,
             isPlaceholder: isPlaceholder,
+            isHovered: isHovered,
+            shouldRenderChildren: shouldRenderChildren,
+            leftIconBuilder: leftIconBuilder,
+            rightIconsBuilder: rightIconsBuilder,
+            isExpandedNotifier: isExpandedNotifier,
+            extendBuilder: extendBuilder,
+            shouldIgnoreView: shouldIgnoreView,
           );
         },
       ),
@@ -120,13 +178,13 @@ class ViewItem extends StatelessWidget {
 
 bool _isDragging = false;
 
-class InnerViewItem extends StatelessWidget {
+class InnerViewItem extends StatefulWidget {
   const InnerViewItem({
     super.key,
     required this.view,
     required this.parentView,
     required this.childViews,
-    required this.categoryType,
+    required this.spaceType,
     this.isDraggable = true,
     this.isExpanded = true,
     required this.level,
@@ -139,12 +197,20 @@ class InnerViewItem extends StatelessWidget {
     required this.height,
     this.isHoverEnabled = true,
     this.isPlaceholder = false,
+    this.isHovered,
+    this.shouldRenderChildren = true,
+    required this.leftIconBuilder,
+    required this.rightIconsBuilder,
+    this.isExpandedNotifier,
+    required this.extendBuilder,
+    this.disableSelectedStatus,
+    required this.shouldIgnoreView,
   });
 
   final ViewPB view;
   final ViewPB? parentView;
   final List<ViewPB> childViews;
-  final FolderCategoryType categoryType;
+  final FolderSpaceType spaceType;
 
   final bool isDraggable;
   final bool isExpanded;
@@ -162,98 +228,143 @@ class InnerViewItem extends StatelessWidget {
 
   final bool isHoverEnabled;
   final bool isPlaceholder;
+  final bool? disableSelectedStatus;
+  final ValueNotifier<bool>? isHovered;
+  final bool shouldRenderChildren;
+  final ViewItemLeftIconBuilder? leftIconBuilder;
+  final ViewItemRightIconsBuilder? rightIconsBuilder;
+
+  final PropertyValueNotifier<bool>? isExpandedNotifier;
+  final List<Widget> Function(ViewPB view)? extendBuilder;
+  final bool Function(ViewPB view)? shouldIgnoreView;
+
+  @override
+  State<InnerViewItem> createState() => _InnerViewItemState();
+}
+
+class _InnerViewItemState extends State<InnerViewItem> {
+  @override
+  void initState() {
+    super.initState();
+    widget.isExpandedNotifier?.addListener(_collapseAllPages);
+  }
+
+  @override
+  void dispose() {
+    widget.isExpandedNotifier?.removeListener(_collapseAllPages);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    Widget child = SingleInnerViewItem(
-      view: view,
-      parentView: parentView,
-      level: level,
-      showActions: showActions,
-      categoryType: categoryType,
-      onSelected: onSelected,
-      onTertiarySelected: onTertiarySelected,
-      isExpanded: isExpanded,
-      isDraggable: isDraggable,
-      leftPadding: leftPadding,
-      isFeedback: isFeedback,
-      height: height,
-      isPlaceholder: isPlaceholder,
+    Widget child = ValueListenableBuilder(
+      valueListenable: getIt<MenuSharedState>().notifier,
+      builder: (context, value, _) {
+        final isSelected = value?.id == widget.view.id;
+        return SingleInnerViewItem(
+          view: widget.view,
+          parentView: widget.parentView,
+          level: widget.level,
+          showActions: widget.showActions,
+          spaceType: widget.spaceType,
+          onSelected: widget.onSelected,
+          onTertiarySelected: widget.onTertiarySelected,
+          isExpanded: widget.isExpanded,
+          isDraggable: widget.isDraggable,
+          leftPadding: widget.leftPadding,
+          isFeedback: widget.isFeedback,
+          height: widget.height,
+          isPlaceholder: widget.isPlaceholder,
+          isHovered: widget.isHovered,
+          leftIconBuilder: widget.leftIconBuilder,
+          rightIconsBuilder: widget.rightIconsBuilder,
+          extendBuilder: widget.extendBuilder,
+          disableSelectedStatus: widget.disableSelectedStatus,
+          shouldIgnoreView: widget.shouldIgnoreView,
+          isSelected: isSelected,
+        );
+      },
     );
 
     // if the view is expanded and has child views, render its child views
-    if (isExpanded) {
-      if (childViews.isNotEmpty) {
-        final children = childViews.map((childView) {
-          return ViewItem(
-            key: ValueKey('${categoryType.name} ${childView.id}'),
-            parentView: view,
-            categoryType: categoryType,
-            isFirstChild: childView.id == childViews.first.id,
-            view: childView,
-            level: level + 1,
-            onSelected: onSelected,
-            onTertiarySelected: onTertiarySelected,
-            isDraggable: isDraggable,
-            leftPadding: leftPadding,
-            isFeedback: isFeedback,
-            isPlaceholder: isPlaceholder,
-          );
-        }).toList();
+    if (widget.isExpanded &&
+        widget.shouldRenderChildren &&
+        widget.childViews.isNotEmpty) {
+      final children = widget.childViews.map((childView) {
+        return ViewItem(
+          key: ValueKey('${widget.spaceType.name} ${childView.id}'),
+          parentView: widget.view,
+          spaceType: widget.spaceType,
+          isFirstChild: childView.id == widget.childViews.first.id,
+          view: childView,
+          level: widget.level + 1,
+          onSelected: widget.onSelected,
+          onTertiarySelected: widget.onTertiarySelected,
+          isDraggable: widget.isDraggable,
+          disableSelectedStatus: widget.disableSelectedStatus,
+          leftPadding: widget.leftPadding,
+          isFeedback: widget.isFeedback,
+          isPlaceholder: widget.isPlaceholder,
+          isHovered: widget.isHovered,
+          leftIconBuilder: widget.leftIconBuilder,
+          rightIconsBuilder: widget.rightIconsBuilder,
+          extendBuilder: widget.extendBuilder,
+          shouldIgnoreView: widget.shouldIgnoreView,
+        );
+      }).toList();
 
-        child = Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            child,
-            ...children,
-          ],
-        );
-      } else {
-        child = Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            child,
-            Container(
-              height: height,
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                // add 2px to make the text align with the view item
-                padding: EdgeInsets.only(left: (level + 1) * leftPadding + 2),
-                child: FlowyText.medium(
-                  LocaleKeys.noPagesInside.tr(),
-                  color: Theme.of(context).hintColor,
-                ),
-              ),
-            ),
-          ],
-        );
-      }
+      child = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          ...children,
+        ],
+      );
     }
 
     // wrap the child with DraggableItem if isDraggable is true
-    if ((isDraggable || isPlaceholder) &&
-        !isReferencedDatabaseView(view, parentView)) {
+    if ((widget.isDraggable || widget.isPlaceholder) &&
+        !isReferencedDatabaseView(widget.view, widget.parentView)) {
       child = DraggableViewItem(
-        isFirstChild: isFirstChild,
-        view: view,
+        isFirstChild: widget.isFirstChild,
+        view: widget.view,
         onDragging: (isDragging) {
           _isDragging = isDragging;
         },
-        onMove: isPlaceholder
-            ? (from, to) => _moveViewCrossSection(context, from, to)
+        onMove: widget.isPlaceholder
+            ? (from, to) => _moveViewCrossSection(
+                  context,
+                  widget.view,
+                  widget.parentView,
+                  widget.spaceType,
+                  from,
+                  to.parentViewId,
+                )
             : null,
         feedback: (context) {
-          return ViewItem(
-            view: view,
-            parentView: parentView,
-            categoryType: categoryType,
-            level: level,
-            onSelected: onSelected,
-            onTertiarySelected: onTertiarySelected,
-            isDraggable: false,
-            leftPadding: leftPadding,
-            isFeedback: true,
+          return Container(
+            width: 250,
+            decoration: BoxDecoration(
+              color: Brightness.light == Theme.of(context).brightness
+                  ? Colors.white
+                  : Colors.black54,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ViewItem(
+              view: widget.view,
+              parentView: widget.parentView,
+              spaceType: widget.spaceType,
+              level: widget.level,
+              onSelected: widget.onSelected,
+              onTertiarySelected: widget.onTertiarySelected,
+              isDraggable: false,
+              leftPadding: widget.leftPadding,
+              isFeedback: true,
+              leftIconBuilder: widget.leftIconBuilder,
+              rightIconsBuilder: widget.rightIconsBuilder,
+              extendBuilder: widget.extendBuilder,
+              shouldIgnoreView: widget.shouldIgnoreView,
+            ),
           );
         },
         child: child,
@@ -261,7 +372,7 @@ class InnerViewItem extends StatelessWidget {
     } else {
       // keep the same height of the DraggableItem
       child = Padding(
-        padding: const EdgeInsets.only(top: 2.0),
+        padding: const EdgeInsets.only(top: kDraggableViewItemDividerHeight),
         child: child,
       );
     }
@@ -269,35 +380,10 @@ class InnerViewItem extends StatelessWidget {
     return child;
   }
 
-  void _moveViewCrossSection(
-    BuildContext context,
-    ViewPB from,
-    ViewPB to,
-  ) {
-    if (isReferencedDatabaseView(view, parentView)) {
-      return;
+  void _collapseAllPages() {
+    if (widget.isExpandedNotifier?.value == true) {
+      context.read<ViewBloc>().add(const ViewEvent.collapseAllPages());
     }
-    final fromSection = categoryType == FolderCategoryType.public
-        ? ViewSectionPB.Private
-        : ViewSectionPB.Public;
-    final toSection = categoryType == FolderCategoryType.public
-        ? ViewSectionPB.Public
-        : ViewSectionPB.Private;
-    context.read<ViewBloc>().add(
-          ViewEvent.move(
-            from,
-            to.parentViewId,
-            null,
-            fromSection,
-            toSection,
-          ),
-        );
-    context.read<ViewBloc>().add(
-          ViewEvent.updateViewVisibility(
-            from,
-            categoryType == FolderCategoryType.public,
-          ),
-        );
   }
 }
 
@@ -310,7 +396,7 @@ class SingleInnerViewItem extends StatefulWidget {
     required this.level,
     required this.leftPadding,
     this.isDraggable = true,
-    required this.categoryType,
+    required this.spaceType,
     required this.showActions,
     required this.onSelected,
     this.onTertiarySelected,
@@ -318,6 +404,13 @@ class SingleInnerViewItem extends StatefulWidget {
     required this.height,
     this.isHoverEnabled = true,
     this.isPlaceholder = false,
+    this.isHovered,
+    required this.leftIconBuilder,
+    required this.rightIconsBuilder,
+    required this.extendBuilder,
+    required this.disableSelectedStatus,
+    required this.shouldIgnoreView,
+    required this.isSelected,
   });
 
   final ViewPB view;
@@ -333,11 +426,19 @@ class SingleInnerViewItem extends StatefulWidget {
   final bool showActions;
   final ViewItemOnSelected onSelected;
   final ViewItemOnSelected? onTertiarySelected;
-  final FolderCategoryType categoryType;
+  final FolderSpaceType spaceType;
   final double height;
 
   final bool isHoverEnabled;
   final bool isPlaceholder;
+  final bool? disableSelectedStatus;
+  final ValueNotifier<bool>? isHovered;
+  final ViewItemLeftIconBuilder? leftIconBuilder;
+  final ViewItemRightIconsBuilder? rightIconsBuilder;
+
+  final List<Widget> Function(ViewPB view)? extendBuilder;
+  final bool Function(ViewPB view)? shouldIgnoreView;
+  final bool isSelected;
 
   @override
   State<SingleInnerViewItem> createState() => _SingleInnerViewItemState();
@@ -349,8 +450,11 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected =
-        getIt<MenuSharedState>().latestOpenView?.id == widget.view.id;
+    var isSelected = widget.isSelected;
+
+    if (widget.disableSelectedStatus == true) {
+      isSelected = false;
+    }
 
     if (widget.isPlaceholder) {
       return const SizedBox(
@@ -379,49 +483,53 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
   }
 
   Widget _buildViewItem(bool onHover, [bool isSelected = false]) {
+    final name = FlowyText.regular(
+      widget.view.name,
+      overflow: TextOverflow.ellipsis,
+    );
     final children = [
-      // expand icon
-      _buildLeftIcon(),
+      const HSpace(2),
+      // expand icon or placeholder
+      widget.leftIconBuilder?.call(context, widget.view) ?? _buildLeftIcon(),
+      const HSpace(2),
       // icon
       _buildViewIconButton(),
-      const HSpace(5),
+      const HSpace(6),
       // title
-      Expanded(
-        child: FlowyText.regular(
-          widget.view.name,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      widget.extendBuilder != null
+          ? Expanded(
+              child: Row(
+                children: [
+                  Flexible(child: name),
+                  ...widget.extendBuilder!(widget.view),
+                ],
+              ),
+            )
+          : Expanded(child: name),
     ];
 
     // hover action
     if (widget.showActions || onHover) {
-      // ··· more action button
-      children.add(_buildViewMoreActionButton(context));
-      // only support add button for document layout
-      if (widget.view.layout == ViewLayoutPB.Document) {
-        // + button
-        children.add(_buildViewAddButton(context));
+      if (widget.rightIconsBuilder != null) {
+        children.addAll(widget.rightIconsBuilder!(context, widget.view));
+      } else {
+        // ··· more action button
+        children.add(_buildViewMoreActionButton(context));
+        // only support add button for document layout
+        if (widget.view.layout == ViewLayoutPB.Document) {
+          // + button
+          children.add(const HSpace(8.0));
+          children.add(_buildViewAddButton(context));
+        }
+        children.add(const HSpace(4.0));
       }
     }
 
     final child = GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onTap: () => widget.onSelected(widget.view),
-      onTertiaryTapDown: (_) => widget.onTertiarySelected?.call(widget.view),
-      onDoubleTap: isSelected
-          ? () {
-              NavigatorTextFieldDialog(
-                title: LocaleKeys.disclosureAction_rename.tr(),
-                autoSelectAllText: true,
-                value: widget.view.name,
-                maxLength: 256,
-                onConfirm: (newValue, _) {
-                  context.read<ViewBloc>().add(ViewEvent.rename(newValue));
-                },
-              ).show(context);
-            }
-          : null,
+      onTap: () => widget.onSelected(context, widget.view),
+      onTertiaryTapDown: (_) =>
+          widget.onTertiarySelected?.call(context, widget.view),
       child: SizedBox(
         height: widget.height,
         child: Padding(
@@ -456,26 +564,24 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
 
   Widget _buildViewIconButton() {
     final icon = widget.view.icon.value.isNotEmpty
-        ? EmojiText(
-            emoji: widget.view.icon.value,
-            fontSize: 18.0,
+        ? FlowyText.emoji(
+            widget.view.icon.value,
+            fontSize: 16.0,
           )
-        : SizedBox.square(
-            dimension: 20.0,
-            child: widget.view.defaultIcon(),
-          );
+        : Opacity(opacity: 0.6, child: widget.view.defaultIcon());
+
     return AppFlowyPopover(
       offset: const Offset(20, 0),
       controller: controller,
       direction: PopoverDirection.rightWithCenterAligned,
-      constraints: BoxConstraints.loose(const Size(360, 380)),
+      constraints: BoxConstraints.loose(const Size(364, 356)),
       onClose: () => setState(() => isIconPickerOpened = false),
       child: GestureDetector(
         // prevent the tap event from being passed to the parent widget
         onTap: () {},
         child: FlowyTooltip(
           message: LocaleKeys.document_plugins_cover_changeIcon.tr(),
-          child: icon,
+          child: SizedBox(width: 16.0, child: icon),
         ),
       ),
       popupBuilder: (context) {
@@ -485,6 +591,7 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
             ViewBackendService.updateViewIcon(
               viewId: widget.view.id,
               viewIcon: result.emoji,
+              iconType: result.type.toProto(),
             );
             controller.close();
           },
@@ -501,18 +608,35 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
       return const _DotIconWidget();
     }
 
-    final svg = widget.isExpanded
-        ? FlowySvgs.drop_menu_show_m
-        : FlowySvgs.drop_menu_hide_m;
-    return GestureDetector(
-      child: FlowySvg(
-        svg,
-        size: const Size.square(16.0),
+    if (context.read<ViewBloc>().state.view.childViews.isEmpty) {
+      return HSpace(widget.leftPadding);
+    }
+
+    final child = FlowyHover(
+      child: GestureDetector(
+        child: FlowySvg(
+          widget.isExpanded
+              ? FlowySvgs.view_item_expand_s
+              : FlowySvgs.view_item_unexpand_s,
+          size: const Size.square(16.0),
+        ),
+        onTap: () => context
+            .read<ViewBloc>()
+            .add(ViewEvent.setIsExpanded(!widget.isExpanded)),
       ),
-      onTap: () => context
-          .read<ViewBloc>()
-          .add(ViewEvent.setIsExpanded(!widget.isExpanded)),
     );
+
+    if (widget.isHovered != null) {
+      return ValueListenableBuilder<bool>(
+        valueListenable: widget.isHovered!,
+        builder: (_, isHovered, child) {
+          return Opacity(opacity: isHovered ? 1.0 : 0.0, child: child);
+        },
+        child: child,
+      );
+    }
+
+    return child;
   }
 
   // + button
@@ -542,7 +666,7 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
                       viewName,
                       pluginBuilder.layoutType!,
                       openAfterCreated: openAfterCreated,
-                      section: widget.categoryType.toViewSectionPB,
+                      section: widget.spaceType.toViewSectionPB,
                     ),
                   );
                 }
@@ -563,9 +687,10 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
       message: LocaleKeys.menuAppHeader_moreButtonToolTip.tr(),
       child: ViewMoreActionButton(
         view: widget.view,
+        spaceType: widget.spaceType,
         onEditing: (value) =>
             context.read<ViewBloc>().add(ViewEvent.setIsEditing(value)),
-        onAction: (action) {
+        onAction: (action, data) {
           switch (action) {
             case ViewMoreActionType.favorite:
             case ViewMoreActionType.unFavorite:
@@ -593,6 +718,36 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
             case ViewMoreActionType.openInNewTab:
               context.read<TabsBloc>().openTab(widget.view);
               break;
+            case ViewMoreActionType.collapseAllPages:
+              context.read<ViewBloc>().add(const ViewEvent.collapseAllPages());
+              break;
+            case ViewMoreActionType.changeIcon:
+              if (data is! EmojiPickerResult) {
+                return;
+              }
+              final result = data;
+              ViewBackendService.updateViewIcon(
+                viewId: widget.view.id,
+                viewIcon: result.emoji,
+                iconType: result.type.toProto(),
+              );
+              break;
+            case ViewMoreActionType.moveTo:
+              final target = data;
+              if (target is! ViewPB) {
+                return;
+              }
+              debugPrint(
+                'Move view ${widget.view.id}, ${widget.view.name} to ${target.id}, ${target.name}',
+              );
+              _moveViewCrossSection(
+                context,
+                widget.view,
+                widget.parentView,
+                widget.spaceType,
+                widget.view,
+                target.id,
+              );
             default:
               throw UnsupportedError('$action is not supported');
           }
@@ -611,6 +766,8 @@ class _SingleInnerViewItemState extends State<SingleInnerViewItem> {
         return LocaleKeys.newBoardText.tr();
       case ViewLayoutPB.Calendar:
         return LocaleKeys.newCalendarText.tr();
+      case ViewLayoutPB.Chat:
+        return LocaleKeys.chat_newChat.tr();
     }
     return LocaleKeys.newPageText.tr();
   }
@@ -641,4 +798,43 @@ bool isReferencedDatabaseView(ViewPB view, ViewPB? parentView) {
     return false;
   }
   return view.layout.isDatabaseView && parentView.layout.isDatabaseView;
+}
+
+void _moveViewCrossSection(
+  BuildContext context,
+  ViewPB view,
+  ViewPB? parentView,
+  FolderSpaceType spaceType,
+  ViewPB from,
+  String toId,
+) {
+  if (isReferencedDatabaseView(view, parentView)) {
+    return;
+  }
+
+  if (from.id == toId) {
+    return;
+  }
+
+  final fromSection = spaceType == FolderSpaceType.public
+      ? ViewSectionPB.Private
+      : ViewSectionPB.Public;
+  final toSection = spaceType == FolderSpaceType.public
+      ? ViewSectionPB.Public
+      : ViewSectionPB.Private;
+  context.read<ViewBloc>().add(
+        ViewEvent.move(
+          from,
+          toId,
+          null,
+          fromSection,
+          toSection,
+        ),
+      );
+  context.read<ViewBloc>().add(
+        ViewEvent.updateViewVisibility(
+          from,
+          spaceType == FolderSpaceType.public,
+        ),
+      );
 }

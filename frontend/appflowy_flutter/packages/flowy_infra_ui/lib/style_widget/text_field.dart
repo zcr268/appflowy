@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flowy_infra/size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'package:flowy_infra/size.dart';
 
 class FlowyTextField extends StatefulWidget {
   final String? hintText;
@@ -34,6 +35,8 @@ class FlowyTextField extends StatefulWidget {
   final TextInputAction? textInputAction;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
+  final bool isDense;
 
   const FlowyTextField({
     super.key,
@@ -66,6 +69,8 @@ class FlowyTextField extends StatefulWidget {
     this.textInputAction,
     this.keyboardType = TextInputType.multiline,
     this.inputFormatters,
+    this.obscureText = false,
+    this.isDense = true,
   });
 
   @override
@@ -132,7 +137,6 @@ class FlowyTextFieldState extends State<FlowyTextField> {
   void _onSubmitted(String text) {
     widget.onSubmitted?.call(text);
     if (widget.autoClearWhenDone) {
-      // using `controller.clear()` instead of `controller.text = ''` which will crash on Windows.
       controller.clear();
     }
   }
@@ -149,7 +153,7 @@ class FlowyTextFieldState extends State<FlowyTextField> {
           _onChanged(text);
         }
       },
-      onSubmitted: (text) => _onSubmitted(text),
+      onSubmitted: _onSubmitted,
       onEditingComplete: widget.onEditingComplete,
       minLines: 1,
       maxLines: widget.maxLines,
@@ -159,6 +163,7 @@ class FlowyTextFieldState extends State<FlowyTextField> {
       textAlignVertical: widget.textAlignVertical ?? TextAlignVertical.center,
       keyboardType: widget.keyboardType,
       inputFormatters: widget.inputFormatters,
+      obscureText: widget.obscureText,
       decoration: widget.decoration ??
           InputDecoration(
             constraints: widget.hintTextConstraints ??
@@ -166,16 +171,15 @@ class FlowyTextFieldState extends State<FlowyTextField> {
                   maxHeight: widget.errorText?.isEmpty ?? true ? 32 : 58,
                 ),
             contentPadding: EdgeInsets.symmetric(
-              horizontal: 12,
+              horizontal: widget.isDense ? 12 : 18,
               vertical:
                   (widget.maxLines == null || widget.maxLines! > 1) ? 12 : 0,
             ),
             enabledBorder: OutlineInputBorder(
+              borderRadius: Corners.s8Border,
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.outline,
-                width: 1.0,
               ),
-              borderRadius: Corners.s8Border,
             ),
             isDense: false,
             hintText: widget.hintText,
@@ -193,23 +197,20 @@ class FlowyTextFieldState extends State<FlowyTextField> {
             suffixText: widget.showCounter ? _suffixText() : "",
             counterText: "",
             focusedBorder: OutlineInputBorder(
+              borderRadius: Corners.s8Border,
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.primary,
-                width: 1.0,
               ),
-              borderRadius: Corners.s8Border,
             ),
             errorBorder: OutlineInputBorder(
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.error,
-                width: 1.0,
               ),
               borderRadius: Corners.s8Border,
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.error,
-                width: 1.0,
               ),
               borderRadius: Corners.s8Border,
             ),

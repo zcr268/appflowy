@@ -4,33 +4,10 @@ abstract class TypeOptionParser<T> {
   T fromBuffer(List<int> buffer);
 }
 
-class RichTextTypeOptionDataParser
-    extends TypeOptionParser<RichTextTypeOptionPB> {
-  @override
-  RichTextTypeOptionPB fromBuffer(List<int> buffer) {
-    return RichTextTypeOptionPB.fromBuffer(buffer);
-  }
-}
-
 class NumberTypeOptionDataParser extends TypeOptionParser<NumberTypeOptionPB> {
   @override
   NumberTypeOptionPB fromBuffer(List<int> buffer) {
     return NumberTypeOptionPB.fromBuffer(buffer);
-  }
-}
-
-class CheckboxTypeOptionDataParser
-    extends TypeOptionParser<CheckboxTypeOptionPB> {
-  @override
-  CheckboxTypeOptionPB fromBuffer(List<int> buffer) {
-    return CheckboxTypeOptionPB.fromBuffer(buffer);
-  }
-}
-
-class URLTypeOptionDataParser extends TypeOptionParser<URLTypeOptionPB> {
-  @override
-  URLTypeOptionPB fromBuffer(List<int> buffer) {
-    return URLTypeOptionPB.fromBuffer(buffer);
   }
 }
 
@@ -65,18 +42,18 @@ class MultiSelectTypeOptionDataParser
   }
 }
 
-class ChecklistTypeOptionDataParser
-    extends TypeOptionParser<ChecklistTypeOptionPB> {
-  @override
-  ChecklistTypeOptionPB fromBuffer(List<int> buffer) {
-    return ChecklistTypeOptionPB.fromBuffer(buffer);
-  }
-}
-
 class RelationTypeOptionDataParser
     extends TypeOptionParser<RelationTypeOptionPB> {
   @override
   RelationTypeOptionPB fromBuffer(List<int> buffer) {
     return RelationTypeOptionPB.fromBuffer(buffer);
+  }
+}
+
+class TranslateTypeOptionDataParser
+    extends TypeOptionParser<TranslateTypeOptionPB> {
+  @override
+  TranslateTypeOptionPB fromBuffer(List<int> buffer) {
+    return TranslateTypeOptionPB.fromBuffer(buffer);
   }
 }

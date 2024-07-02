@@ -58,7 +58,7 @@ class _TextCellState extends GridEditableTextCell<EditableTextCell> {
       widget.databaseController,
       widget.cellContext,
     ).as(),
-  )..add(const TextCellEvent.initial());
+  );
 
   @override
   void initState() {
@@ -80,14 +80,20 @@ class _TextCellState extends GridEditableTextCell<EditableTextCell> {
       value: cellBloc,
       child: BlocListener<TextCellBloc, TextCellState>(
         listener: (context, state) {
-          _textEditingController.text = state.content;
+          if (!focusNode.hasFocus) {
+            _textEditingController.text = state.content;
+          }
         },
-        child: widget.skin.build(
-          context,
-          widget.cellContainerNotifier,
-          cellBloc,
-          focusNode,
-          _textEditingController,
+        child: Builder(
+          builder: (context) {
+            return widget.skin.build(
+              context,
+              widget.cellContainerNotifier,
+              cellBloc,
+              focusNode,
+              _textEditingController,
+            );
+          },
         ),
       ),
     );

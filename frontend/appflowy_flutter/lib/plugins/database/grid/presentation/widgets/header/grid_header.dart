@@ -139,7 +139,7 @@ class _GridHeaderState extends State<_GridHeader> {
   }
 
   Widget _cellLeading() {
-    return SizedBox(width: GridSize.horizontalHeaderPadding);
+    return SizedBox(width: GridSize.horizontalHeaderPadding + 40);
   }
 }
 
@@ -151,7 +151,10 @@ class _CellTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: GridSize.trailHeaderPadding,
+      constraints: BoxConstraints(
+        maxWidth: GridSize.newPropertyButtonWidth,
+        minHeight: GridSize.headerHeight,
+      ),
       margin: EdgeInsets.only(right: GridSize.scrollBarSize + Insets.m),
       decoration: BoxDecoration(
         border: Border(

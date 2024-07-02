@@ -9,6 +9,7 @@
   "title": "标题",
   "youCanAlso": "您还可以",
   "and": "以及",
+  "failedToOpenUrl": "打开 url:{}失败",
   "blockActions": {
     "addBelowTooltip": "点击下方添加",
     "addAboveCmd": "Alt+单击",
@@ -41,30 +42,67 @@
     "emailHint": "邮箱",
     "passwordHint": "密码",
     "dontHaveAnAccount": "没有账户?",
+    "createAccount": "新建账户",
     "repeatPasswordEmptyError": "确认密码不能为空",
     "unmatchedPasswordError": "两次密码输入不一致",
     "syncPromptMessage": "同步数据可能需要一段时间，请不要关闭此页面",
     "or": "或",
+    "signInWithGoogle": "使用 Google 账户登录",
+    "signInWithGithub": "使用 Github 账户登录",
+    "signInWithDiscord": "使用 Discord 账户登录",
+    "signUpWithGoogle": "使用 Google 账户注册",
+    "signUpWithGithub": "使用 Github 账户注册",
+    "signUpWithDiscord": "使用 Discord 账户注册",
+    "signInWith": "用其他方式登入：",
+    "signInWithEmail": "使用邮箱登录",
+    "signInWithMagicLink": "使用魔法链接登录",
+    "signUpWithMagicLink": "使用魔法链接注册",
+    "pleaseInputYourEmail": "请输入邮箱地址",
+    "settings": "设置",
+    "magicLinkSent": "魔法链接已经发送到您的邮箱，请检查！",
+    "invalidEmail": "请输入一个有效的邮箱地址",
+    "alreadyHaveAnAccount": "已经有账户了？",
+    "logIn": "登陆",
+    "generalError": "出现错误，请稍后再试",
+    "limitRateError": "出于安全原因，每60秒仅可以发送一次链接",
     "LogInWithGoogle": "使用 Google 登录",
     "LogInWithGithub": "使用 Github 登录",
     "LogInWithDiscord": "使用 Discord 登录",
-    "signInWith": "用其他方式登入：",
-    "loginAsGuestButtonText": "开始使用"
+    "loginAsGuestButtonText": "开始使用",
+    "logInWithMagicLink": "使用魔法链接登录"
   },
   "workspace": {
     "chooseWorkspace": "选择您的工作区",
     "create": "新建工作区",
     "reset": "重置工作区",
+    "renameWorkspace": "重命名工作区",
     "resetWorkspacePrompt": "重置工作区将删除其中的所有页面和数据。您确定要重置工作区吗？您也可以联系技术支持团队来恢复工作区",
     "hint": "工作区",
     "notFoundError": "找不到工作区",
-    "failedToLoad": "出了些问题！我们无法加载工作区。请尝试关闭所有打开的 AppFlowy 实例，然后重试。",
+    "failedToLoad": "出了些问题！我们无法加载工作区。请尝试关闭所有打开的 @:appName 实例，然后重试。",
     "errorActions": {
       "reportIssue": "上报问题",
       "reportIssueOnGithub": "在 Github 上报告问题",
       "exportLogFiles": "导出日志文件",
       "reachOut": "在 Discord 联系我们"
-    }
+    },
+    "menuTitle": "工作区",
+    "deleteWorkspaceHintText": "您确定要删除这个工作区嘛？这个操作不可恢复。",
+    "createSuccess": "工作区创建成功",
+    "createFailed": "工作区创建失败",
+    "createLimitExceeded": "您已达到账户允许的最大工作空间限制。如果您需要额外的工作空间来继续工作，请在 Github 上申请",
+    "deleteSuccess": "工作区删除成功",
+    "deleteFailed": "工作区删除失败",
+    "openSuccess": "打开工作区成功",
+    "openFailed": "打开工作区失败",
+    "renameSuccess": "工作区已成功重命名",
+    "renameFailed": "工作区重命名失败",
+    "updateIconSuccess": "工作区图标已修改",
+    "updateIconFailed": "修改工作区图标失败",
+    "cannotDeleteTheOnlyWorkspace": "不能删除仅存的工作区",
+    "fetchWorkspacesFailed": "获取工作区失败",
+    "leaveCurrentWorkspace": "退出工作区",
+    "leaveCurrentWorkspacePrompt": "您确定要离开当前工作区吗？"
   },
   "shareAction": {
     "buttonText": "分享",
@@ -81,7 +119,12 @@
     "large": "大",
     "fontSize": "字号",
     "import": "导入",
-    "moreOptions": "更多选项"
+    "moreOptions": "更多选项",
+    "wordCount": "字数:{}",
+    "charCount": "字符数:{}",
+    "createdAt": "创建于 :{}",
+    "deleteView": "删除",
+    "duplicateView": "复制"
   },
   "importPanel": {
     "textAndMarkdown": "文本 和 Markdown",
@@ -99,7 +142,9 @@
     "openNewTab": "在新选项卡中打开",
     "moveTo": "移动",
     "addToFavorites": "添加到收藏夹",
-    "copyLink": "复制链接"
+    "copyLink": "复制链接",
+    "changeIcon": "更改图表",
+    "collapseAllPages": "收起全部子页面"
   },
   "blankPageTitle": "空白页",
   "newPageText": "新页面",
@@ -107,6 +152,19 @@
   "newGridText": "新建网格",
   "newCalendarText": "新日历",
   "newBoardText": "新建看板",
+  "chat": {
+    "newChat": "AI 对话",
+    "unsupportedCloudPrompt": "该功能仅在使用 @:appName Cloud 时可用",
+    "relatedQuestion": "相关问题",
+    "serverUnavailable": "服务暂时不可用，请稍后再试",
+    "clickToRetry": "点击重试",
+    "regenerateAnswer": "重新生成",
+    "question1": "如何使用 Kanban 来管理任务",
+    "question2": "介绍一下 GTD 工作法",
+    "question3": "为什么使用 Rust",
+    "question4": "使用现有食材制定一份菜谱",
+    "aiMistakePrompt": "AI 可能出错，请验证重要信息"
+  },
   "trash": {
     "text": "回收站",
     "restoreAll": "全部恢复",
@@ -130,7 +188,8 @@
       "emptyDescription": "您没有任何已删除的文件",
       "isDeleted": "已删除",
       "isRestored": "已恢复"
-    }
+    },
+    "confirmDeleteTitle": "您确定要永久删除此页面吗？"
   },
   "deletePagePrompt": {
     "text": "此页面已被移动至垃圾桶",
@@ -192,11 +251,22 @@
     "closeSidebar": "关闭侧边栏",
     "openSidebar": "打开侧边栏",
     "personal": "个人的",
+    "private": "私人的",
+    "workspace": "工作区",
     "favorites": "收藏夹",
     "clickToHidePersonal": "点击隐藏个人部分",
     "clickToHideFavorites": "单击隐藏收藏夹栏目",
     "addAPage": "添加页面",
-    "recent": "最近的"
+    "addAPageToPrivate": "添加页面到私人空间",
+    "addAPageToWorkspace": "添加页面到工作空间",
+    "recent": "最近的",
+    "today": "今日",
+    "thisWeek": "本周",
+    "others": "其他",
+    "justNow": "现在",
+    "minutesAgo": "{count} 分钟以前",
+    "lastViewed": "最近一次查看",
+    "removeSuccess": "成功移除"
   },
   "notifications": {
     "export": {
@@ -212,6 +282,7 @@
   },
   "button": {
     "ok": "OK",
+    "confirm": "确认",
     "done": "完成",
     "cancel": "取消",
     "signIn": "登录",
@@ -239,6 +310,19 @@
     "helpCenter": "帮助中心",
     "add": "添加",
     "yes": "是",
+    "clear": "清空",
+    "remove": "移除",
+    "dontRemove": "不移除",
+    "copyLink": "复制链接",
+    "align": "对齐",
+    "login": "登录",
+    "logout": "退出",
+    "deleteAccount": "删除账户",
+    "back": "返回",
+    "signInGoogle": "使用 Google 账户登录",
+    "signInGithub": "使用 Github 账户登录",
+    "signInDiscord": "使用 Discord 账户登录",
+    "more": "更多",
     "Done": "完成",
     "Cancel": "取消",
     "OK": "确认"
@@ -265,6 +349,144 @@
   },
   "settings": {
     "title": "设置",
+    "accountPage": {
+      "menuLabel": "我的账户",
+      "title": "我的账户",
+      "email": {
+        "title": "邮箱",
+        "actions": {
+          "change": "更改邮箱"
+        }
+      },
+      "login": {
+        "title": "登录账户",
+        "loginLabel": "登录",
+        "logoutLabel": "退出登录"
+      },
+      "keys": {
+        "title": "AI API 密钥",
+        "openAILabel": "OpenAI API 密钥",
+        "openAIHint": "输入你的 OpenAI API Key",
+        "stabilityAILabel": "Stability API key",
+        "stabilityAIHint": "输入你的 Stability API Key"
+      },
+      "description": "自定义您的简介，管理账户安全信息和 AI API keys，或登陆您的账户"
+    },
+    "workspacePage": {
+      "menuLabel": "工作区",
+      "title": "工作区",
+      "description": "自定义你的工作区外观、主题、字体、文本布局、日期/时间格式和语言。",
+      "workspaceName": {
+        "title": "工作区名称",
+        "savedMessage": "已保存的工作区名称",
+        "editTooltip": "编辑工作区名称"
+      },
+      "workspaceIcon": {
+        "title": "工作区图标",
+        "description": "上传图片或使用表情符号到你的工作区。图标将显示在您的侧边栏和通知中。"
+      },
+      "appearance": {
+        "title": "外观",
+        "description": "自定义你的工作区外观、主题、字体、文本布局、日期、时间和语言。",
+        "options": {
+          "system": "自动",
+          "light": "明亮",
+          "dark": "黑暗"
+        }
+      },
+      "theme": {
+        "title": "主题",
+        "description": "选择预设主题，或上传你自己的自定义主题。"
+      },
+      "workspaceFont": {
+        "title": "工作区字体"
+      },
+      "textDirection": {
+        "title": "文字方向",
+        "leftToRight": "从左到右",
+        "rightToLeft": "从右到左",
+        "auto": "自动"
+      },
+      "layoutDirection": {
+        "title": "布局方向",
+        "leftToRight": "从左到右",
+        "rightToLeft": "从右到左"
+      },
+      "dateTime": {
+        "title": "日期 & 时间",
+        "24HourTime": "24 小时制",
+        "dateFormat": {
+          "label": "日期格式",
+          "dmy": "日/月/年"
+        }
+      },
+      "language": {
+        "title": "语言"
+      },
+      "deleteWorkspacePrompt": {
+        "title": "删除工作区",
+        "content": "你确定要删除此工作区吗？此操作无法撤消。"
+      },
+      "leaveWorkspacePrompt": {
+        "title": "离开工作区",
+        "content": "你确定要离开此工作区吗？你将无法访问其中的所有页面和数据。"
+      },
+      "manageWorkspace": {
+        "title": "管理工作区",
+        "leaveWorkspace": "离开工作区",
+        "deleteWorkspace": "删除工作区"
+      }
+    },
+    "manageDataPage": {
+      "menuLabel": "管理数据",
+      "title": "管理数据",
+      "description": "管理数据本地存储或将现有数据导入@:appName 。",
+      "dataStorage": {
+        "title": "文件存储位置",
+        "tooltip": "你的文件存储位置",
+        "actions": {
+          "change": "更改路径",
+          "open": "打开文件夹",
+          "openTooltip": "打开当前数据文件夹位置",
+          "copy": "复制路径",
+          "copiedHint": "路径已复制！",
+          "resetTooltip": "重置为默认位置"
+        },
+        "resetDialog": {
+          "description": "将数据路径重置为默认位置不会删除你的数据。如果你想重新导入当前数据，你应该先复制当前位置的路径。"
+        }
+      },
+      "importData": {
+        "title": "导入数据",
+        "tooltip": "从 @:appName 备份/数据文件夹导入数据",
+        "action": "浏览文件夹"
+      },
+      "encryption": {
+        "title": "加密",
+        "tooltip": "管理你的数据存储和加密方式",
+        "descriptionNoEncryption": "开启加密将会加密所有数据。此操作无法撤消。",
+        "descriptionEncrypted": "你的数据已加密。",
+        "action": "加密数据",
+        "dialog": {
+          "description": "加密所有数据将保证数据安全。此操作无法撤消。您确定要继续吗？"
+        }
+      },
+      "cache": {
+        "title": "清除缓存",
+        "description": "如果你遇到图片无法加载或字体无法正确显示的问题，请尝试清除缓存。此操作不会删除你的用户数据。",
+        "dialog": {
+          "description": "清除缓存会导致加载时重新下载图像和字体。此操作不会删除或修改你的数据。",
+          "successHint": "缓存已清除！"
+        }
+      }
+    },
+    "planPage": {
+      "planUsage": {
+        "currentPlan": {
+          "freeTitle": "免费"
+        }
+      }
+    },
     "menu": {
       "appearance": "外观",
       "language": "语言",
@@ -289,8 +511,8 @@
       "cloudSupabaseUrlCanNotBeEmpty": "supabase url 不能为空",
       "cloudSupabaseAnonKey": "Supabase Anon key",
       "cloudSupabaseAnonKeyCanNotBeEmpty": "如果 Supabase url 不为空，则 Anon key 不能为空",
-      "cloudAppFlowy": "AppFlowy Cloud",
-      "cloudAppFlowySelfHost": "AppFlowy Cloud 自托管",
+      "cloudAppFlowy": "@:appName Cloud Beta",
+      "cloudAppFlowySelfHost": "@:appName Cloud 自托管",
       "appFlowyCloudUrlCanNotBeEmpty": "云地址不能为空",
       "clickToCopy": "点击复制",
       "selfHostStart": "如果您没有服务器，请参阅",
@@ -311,12 +533,12 @@
       "historicalUserList": "用户登录历史记录",
       "historicalUserListTooltip": "此列表显示您的匿名帐户。您可以单击某个帐户来查看其详细信息。单击“开始”按钮即可创建匿名帐户",
       "openHistoricalUser": "点击开设匿名账户",
-      "customPathPrompt": "将 AppFlowy 数据文件夹存储在云同步文件夹（例如 Google Drive）中可能会带来风险。如果同时从多个位置访问或修改此文件夹中的数据库，可能会导致同步冲突和潜在的数据损坏",
-      "importAppFlowyData": "从外部 AppFlowy 文件夹导入数据",
+      "customPathPrompt": "将 @:appName 数据文件夹存储在云同步文件夹（例如 Google Drive）中可能会带来风险。如果同时从多个位置访问或修改此文件夹中的数据库，可能会导致同步冲突和潜在的数据损坏",
+      "importAppFlowyData": "从外部 @:appName 文件夹导入数据",
       "importingAppFlowyDataTip": "数据导入正在进行中。请不要关闭应用程序",
-      "importAppFlowyDataDescription": "从外部 AppFlowy 数据文件夹复制数据并将其导入到当前 AppFlowy 数据文件夹中",
-      "importSuccess": "成功导入AppFlowy数据文件夹",
-      "importFailed": "导入 AppFlowy 数据文件夹失败",
+      "importAppFlowyDataDescription": "从外部 @:appName 数据文件夹复制数据并将其导入到当前 @:appName 数据文件夹中",
+      "importSuccess": "成功导入@:appName数据文件夹",
+      "importFailed": "导入 @:appName 数据文件夹失败",
       "importGuide": "有关详细信息，请参阅参考文档",
       "supabaseSetting": "Supabase 设置",
       "cloudSetting": "云设置"
@@ -339,6 +561,7 @@
         "dark": "夜间模式",
         "system": "系统自适应"
       },
+      "fontScaleFactor": "字体缩放",
       "documentSettings": {
         "cursorColor": "文档光标颜色",
         "selectionColor": "文档选择颜色",
@@ -368,7 +591,7 @@
       "themeUpload": {
         "button": "上传",
         "uploadTheme": "上传主题",
-        "description": "使用下面的按钮上传您自己的 AppFlowy 主题。",
+        "description": "使用下面的按钮上传您自己的 @:appName 主题。",
         "loading": "我们正在验证并上传您的主题，请稍候...",
         "uploadSuccess": "您的主题已上传成功",
         "deletionFailure": "删除主题失败，请尝试手动删除。",
@@ -392,14 +615,33 @@
         "twelveHour": "十二小时制",
         "twentyFourHour": "二十四小时制"
       },
-      "showNamingDialogWhenCreatingPage": "创建页面时显示命名对话框"
+      "showNamingDialogWhenCreatingPage": "创建页面时显示命名对话框",
+      "enableRTLToolbarItems": "显示从右到左按钮",
+      "members": {
+        "title": "成员设置",
+        "inviteMembers": "添加成员",
+        "sendInvite": "发送邀请",
+        "copyInviteLink": "复制邀请链接",
+        "label": "成员",
+        "user": "用户",
+        "role": "角色",
+        "removeFromWorkspace": "从工作区移除",
+        "owner": "所有者",
+        "guest": "访客",
+        "member": "成员",
+        "emailSent": "邮件已发送，请检查您的邮箱",
+        "failedToAddMember": "添加成员失败",
+        "addMemberSuccess": "添加成员成功",
+        "removeMember": "移除成员",
+        "areYouSureToRemoveMember": "您确定要删除该成员吗？"
+      }
     },
     "files": {
       "copy": "复制",
       "defaultLocation": "读取文件和数据存储位置",
       "exportData": "导出您的数据",
       "doubleTapToCopy": "双击复制路径",
-      "restoreLocation": "恢复为 AppFlowy 默认路径",
+      "restoreLocation": "恢复为 @:appName 默认路径",
       "customizeLocation": "打开另一个文件夹",
       "restartApp": "请重启 App 使设置生效",
       "exportDatabase": "导出数据库",
@@ -411,10 +653,10 @@
       "defineWhereYourDataIsStored": "定义数据存储位置",
       "open": "打开",
       "openFolder": "打开现有文件夹",
-      "openFolderDesc": "读取并将其写入您现有的 AppFlowy 文件夹",
+      "openFolderDesc": "读取并将其写入您现有的 @:appName 文件夹",
       "folderHintText": "文件夹名",
       "location": "正在新建文件夹",
-      "locationDesc": "为您的 AppFlowy 数据文件夹选择一个名称",
+      "locationDesc": "为您的 @:appName 数据文件夹选择一个名称",
       "browser": "浏览",
       "create": "新建",
       "set": "设置",
@@ -425,10 +667,14 @@
       "change": "更改",
       "openLocationTooltips": "打开另一个数据目录",
       "openCurrentDataFolder": "打开当前数据目录",
-      "recoverLocationTooltips": "恢复为 AppFlowy 默认数据目录",
+      "recoverLocationTooltips": "恢复为 @:appName 默认数据目录",
       "exportFileSuccess": "导出成功!",
       "exportFileFail": "导出失败!",
-      "export": "导出"
+      "export": "导出",
+      "clearCache": "清空缓存",
+      "clearCacheDesc": "如果您遇到图片无法加载或字体无法正确显示的问题，请尝试清除缓存。此操作不会删除您的用户数据。",
+      "areYouSureToClearCache": "您确定要清除缓存吗？",
+      "clearCacheSuccess": "缓存清除成功！"
     },
     "user": {
       "name": "名字",
@@ -438,17 +684,6 @@
       "pleaseInputYourOpenAIKey": "请输入您的 OpenAI 密钥",
       "pleaseInputYourStabilityAIKey": "请输入您的 Stability AI 密钥",
       "clickToLogout": "点击退出当前用户"
-    },
-    "shortcuts": {
-      "shortcutsLabel": "快捷方式",
-      "command": "指令",
-      "keyBinding": "按键绑定",
-      "addNewCommand": "添加新指令",
-      "updateShortcutStep": "按所需的组合键并按 ENTER",
-      "shortcutIsAlreadyUsed": "此快捷方式已用于：{conflict}",
-      "resetToDefault": "重置为默认组合键",
-      "couldNotLoadErrorMsg": "无法加载快捷方式，请重试",
-      "couldNotSaveErrorMsg": "无法保存快捷方式，请重试"
     },
     "mobile": {
       "personalInfo": "个人信息",
@@ -466,6 +701,27 @@
       "selectLayout": "选择布局",
       "selectStartingDay": "选择开始日期",
       "version": "版本"
+    },
+    "shortcuts": {
+      "shortcutsLabel": "快捷方式",
+      "command": "指令",
+      "keyBinding": "按键绑定",
+      "addNewCommand": "添加新指令",
+      "updateShortcutStep": "按所需的组合键并按 ENTER",
+      "shortcutIsAlreadyUsed": "此快捷方式已用于：{conflict}",
+      "resetToDefault": "重置为默认组合键",
+      "couldNotLoadErrorMsg": "无法加载快捷方式，请重试",
+      "couldNotSaveErrorMsg": "无法保存快捷方式，请重试",
+      "commands": {
+        "codeBlockNewParagraph": "在代码块旁边插入一个新段落",
+        "codeBlockAddTwoSpaces": "在代码块的行首插入两个空格",
+        "codeBlockSelectAll": "选择代码块内的所有内容",
+        "codeBlockPasteText": "在代码块中粘贴文本",
+        "textAlignLeft": "左对齐文本",
+        "textAlignCenter": "将文本居中对齐",
+        "textAlignRight": "右对齐文本",
+        "codeBlockDeleteTwoSpaces": "删除代码块中行首的两个空格"
+      }
     }
   },
   "grid": {
@@ -495,6 +751,9 @@
       "editView": "编辑视图",
       "boardSettings": "看板设置",
       "calendarSettings": "日历设置",
+      "createView": "新视图",
+      "duplicateView": "复制视图",
+      "deleteView": "删除视图",
       "numberOfVisibleFields": "显示 {}",
       "Properties": "属性"
     },
@@ -526,6 +785,14 @@
       "isComplete": "已完成",
       "isIncomplted": "未完成"
     },
+    "selectOptionFilter": {
+      "is": "是",
+      "isNot": "不是",
+      "contains": "包含",
+      "doesNotContain": "不含",
+      "isEmpty": "为空",
+      "isNotEmpty": "不为空"
+    },
     "dateFilter": {
       "is": "是",
       "before": "之前",
@@ -534,7 +801,25 @@
       "onOrAfter": "在或之后",
       "between": "之间",
       "empty": "为空",
-      "notEmpty": "不为空"
+      "notEmpty": "不为空",
+      "choicechipPrefix": {
+        "before": "之前",
+        "after": "之后",
+        "onOrBefore": "今天或之前",
+        "onOrAfter": "今天或之后",
+        "isEmpty": "为空",
+        "isNotEmpty": "不为空"
+      }
+    },
+    "numberFilter": {
+      "equal": "等于",
+      "notEqual": "不相等",
+      "lessThan": "小于",
+      "greaterThan": "大于",
+      "lessThanOrEqualTo": "小于或等于",
+      "greaterThanOrEqualTo": "大于或等于",
+      "isEmpty": "为空",
+      "isNotEmpty": "不为空"
     },
     "field": {
       "hide": "隐藏",
@@ -543,6 +828,7 @@
       "insertRight": "右侧插入",
       "duplicate": "复制",
       "delete": "删除",
+      "clear": "清空单元格",
       "textFieldName": "文本",
       "checkboxFieldName": "勾选框",
       "dateFieldName": "日期",
@@ -582,9 +868,12 @@
       "editProperty": "编辑列属性",
       "newProperty": "添加一列",
       "deleteFieldPromptMessage": "确定要删除这个属性吗? ",
+      "clearFieldPromptMessage": "您确定吗？此列中的所有单元格都将被清空",
       "newColumn": "新建列",
       "format": "格式",
-      "reminderOnDateTooltip": "此单元格有预定的提醒"
+      "reminderOnDateTooltip": "此单元格有预定的提醒",
+      "optionAlreadyExist": "选项已存在",
+      "wrap": "自动换行"
     },
     "rowPage": {
       "newField": "添加新字段",
@@ -603,8 +892,12 @@
     "sort": {
       "ascending": "升序",
       "descending": "降序",
+      "by": "通过",
+      "cannotFindCreatableField": "找不到合适的排序字段",
       "deleteAllSorts": "删除所有排序",
       "addSort": "添加排序",
+      "removeSorting": "您想删除排序吗？",
+      "fieldInUse": "您已按此字段排序",
       "deleteSort": "删除排序"
     },
     "row": {
@@ -618,6 +911,7 @@
       "action": "执行",
       "add": "点击添加到下方",
       "drag": "拖动以移动",
+      "deleteRowPrompt": "您确定要删除此行吗？此操作无法撤消",
       "dragAndClick": "拖拽移动，点击打开菜单",
       "insertRecordAbove": "在上方插入记录",
       "insertRecordBelow": "点击添加到下方"
@@ -649,6 +943,15 @@
       "submitNewTask": "创建",
       "hideComplete": "隐藏已完成的任务",
       "showComplete": "显示所有任务"
+    },
+    "url": {
+      "launch": "在浏览器中打开链接",
+      "copy": "将链接复制到剪贴板",
+      "textFieldHint": "输入 URL",
+      "copiedNotification": "已复制到剪贴板！"
+    },
+    "relation": {
+      "rowSearchTextFieldPlaceholder": "搜索"
     },
     "menuName": "网格",
     "referencedGridPrefix": "视图",
@@ -726,6 +1029,8 @@
       "discardResponse": "您是否要放弃 AI 继续写作?",
       "createInlineMathEquation": "创建方程",
       "fonts": "字体",
+      "insertDate": "插入日期",
+      "emoji": "表情符号",
       "toggleList": "切换列表",
       "quoteList": "引用列表",
       "numberedList": "编号列表",
@@ -800,7 +1105,26 @@
         "cut": "剪切",
         "paste": "粘贴"
       },
-      "action": "操作"
+      "action": "操作",
+      "database": {
+        "selectDataSource": "选择数据源",
+        "noDataSource": "没有数据源",
+        "selectADataSource": "选择数据源",
+        "toContinue": "继续",
+        "newDatabase": "新建数据库",
+        "linkToDatabase": "链接至数据库"
+      },
+      "date": "日期",
+      "video": {
+        "label": "视频",
+        "emptyLabel": "添加视频",
+        "placeholder": "粘贴视频链接",
+        "copiedToPasteBoard": "视频链接已复制到剪贴板",
+        "insertVideo": "添加视频"
+      }
+    },
+    "outlineBlock": {
+      "placeholder": "目录"
     },
     "textBlock": {
       "placeholder": "输入 “/” 作为命令"
@@ -831,7 +1155,8 @@
         "invalidImage": "图片无效",
         "invalidImageSize": "图片大小必须小于 5MB",
         "invalidImageFormat": "不支持图像格式。支持的格式：JPEG、PNG、GIF、SVG",
-        "invalidImageUrl": "图片网址无效"
+        "invalidImageUrl": "图片网址无效",
+        "noImage": "没有这样的文件或目录"
       },
       "embedLink": {
         "label": "内嵌链接",
@@ -846,13 +1171,18 @@
       "saveImageToGallery": "保存图片",
       "failedToAddImageToGallery": "无法将图像添加到图库",
       "successToAddImageToGallery": "图片已成功添加到图库",
-      "unableToLoadImage": "无法加载图像"
+      "unableToLoadImage": "无法加载图像",
+      "maximumImageSize": "支持的最大上传图片大小为 10MB",
+      "uploadImageErrorImageSizeTooBig": "图片大小必须小于 10MB",
+      "imageIsUploading": "图片正在上传"
     },
     "codeBlock": {
       "language": {
         "label": "语言",
-        "placeholder": "选择语言"
-      }
+        "placeholder": "选择语言",
+        "auto": "自动"
+      },
+      "copyTooltip": "复制代码块的内容"
     },
     "inlineLink": {
       "placeholder": "粘贴或输入链接",
@@ -925,6 +1255,15 @@
       "unhideGroup": "显示隐藏的组",
       "unhideGroupContent": "您确定要在看板上显示该组吗？",
       "faildToLoad": "无法加载看板视图"
+    },
+    "dateCondition": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "tomorrow": "明天",
+      "lastSevenDays": "过去 7 天",
+      "nextSevenDays": "未来 7 天",
+      "lastThirtyDays": "过去 30 天",
+      "nextThirtyDays": "未来 30 天"
     }
   },
   "calendar": {
@@ -935,7 +1274,13 @@
       "today": "今天",
       "jumpToday": "跳转到今天",
       "previousMonth": "上一月",
-      "nextMonth": "下一月"
+      "nextMonth": "下一月",
+      "views": {
+        "day": "天",
+        "week": "周",
+        "month": "月",
+        "year": "年"
+      }
     },
     "settings": {
       "showWeekNumbers": "显示周数",
@@ -952,7 +1297,7 @@
     "quickJumpYear": "跳转到"
   },
   "errorDialog": {
-    "title": "AppFlowy 错误",
+    "title": "@:appName 错误",
     "howToFixFallback": "对于给您带来的不便, 我们深表歉意! 请在我们的 GitHub 页面上提交 issue 并描述您遇到的错误。",
     "github": "在 GitHub 查看"
   },
@@ -1027,7 +1372,18 @@
     }
   },
   "datePicker": {
-    "dateTimeFormatTooltip": "在设置中更改日期和时间格式"
+    "dateTimeFormatTooltip": "在设置中更改日期和时间格式",
+    "reminderOptions": {
+      "fiveMinsBefore": "5 分钟以前",
+      "tenMinsBefore": "10 分钟以前",
+      "fifteenMinsBefore": "15 分钟以前",
+      "thirtyMinsBefore": "30 分钟以前",
+      "oneHourBefore": "1 小时以前",
+      "twoHoursBefore": "2 小时以前",
+      "oneDayBefore": "1 天以前",
+      "twoDaysBefore": "2 天以前",
+      "oneWeekBefore": "1 周以前"
+    }
   },
   "relativeDates": {
     "yesterday": "昨天",
@@ -1215,5 +1571,48 @@
     "date": "日期",
     "addField": "添加字段",
     "userIcon": "用户图标"
+  },
+  "newSettings": {
+    "myAccount": {
+      "title": "我的账户",
+      "subtitle": "自定义您的个人资料，管理账户安全，设置 AI keys，或登录您的账户。",
+      "profileLabel": "帐户名称 & 头像",
+      "profileNamePlaceholder": "输入你的名字",
+      "accountSecurity": "帐户安全",
+      "2FA": "两步验证",
+      "aiKeys": "AI keys",
+      "accountLogin": "登录账户",
+      "updateNameError": "更新名称失败",
+      "updateIconError": "更新图标失败",
+      "deleteAccount": {
+        "title": "删除帐户",
+        "subtitle": "永久删除你的帐户和所有数据。",
+        "deleteMyAccount": "删除我的账户",
+        "dialogTitle": "删除帐户",
+        "dialogContent1": "你确定要永久删除您的帐户吗？",
+        "dialogContent2": "此操作无法撤消，并且将删除所有团队空间的访问权限，删除你的整个帐户（包括私人工作区），并将你从所有共享工作区中删除。"
+      }
+    },
+    "workplace": {
+      "updateIconError": "图标更新失败",
+      "chooseAnIcon": "选择一个图标",
+      "appearance": {
+        "name": "外观",
+        "themeMode": {
+          "auto": "自动",
+          "light": "明亮",
+          "dark": "黑暗"
+        },
+        "language": "语言"
+      }
+    }
+  },
+  "pageStyle": {
+    "pageIcon": "页面图标",
+    "openSettings": "打开设置",
+    "image": "图像"
+  },
+  "commandPalette": {
+    "placeholder": "输入你要搜索的内容..."
   }
 }

@@ -1,7 +1,8 @@
-import 'package:appflowy_popover/appflowy_popover.dart';
-import 'package:flowy_infra_ui/flowy_infra_ui.dart' hide WidgetBuilder;
-import 'package:flowy_infra_ui/style_widget/hover.dart';
 import 'package:flutter/material.dart';
+
+import 'package:appflowy_popover/appflowy_popover.dart';
+import 'package:flowy_infra_ui/flowy_infra_ui.dart';
+import 'package:flowy_infra_ui/style_widget/hover.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 class PopoverActionList<T extends PopoverAction> extends StatefulWidget {
@@ -42,12 +43,12 @@ class PopoverActionList<T extends PopoverAction> extends StatefulWidget {
 
 class _PopoverActionListState<T extends PopoverAction>
     extends State<PopoverActionList<T>> {
-  late PopoverController popoverController;
+  final PopoverController popoverController = PopoverController();
 
   @override
-  void initState() {
-    popoverController = PopoverController();
-    super.initState();
+  void dispose() {
+    popoverController.close();
+    super.dispose();
   }
 
   @override
@@ -83,7 +84,7 @@ class _PopoverActionListState<T extends PopoverAction>
             );
           } else {
             final custom = action as CustomActionCell;
-            return custom.buildWithContext(context);
+            return custom.buildWithContext(context, popoverController);
           }
         }).toList();
 
@@ -121,7 +122,7 @@ abstract class PopoverActionCell extends PopoverAction {
 }
 
 abstract class CustomActionCell extends PopoverAction {
-  Widget buildWithContext(BuildContext context);
+  Widget buildWithContext(BuildContext context, PopoverController controller);
 }
 
 abstract class PopoverAction {}
@@ -245,9 +246,10 @@ class HoverButton extends StatelessWidget {
                 HSpace(ActionListSizes.itemHPadding),
               ],
               Expanded(
-                child: FlowyText.medium(
+                child: FlowyText.regular(
                   name,
                   overflow: TextOverflow.visible,
+                  lineHeight: 1.15,
                 ),
               ),
               if (rightIcon != null) ...[

@@ -38,6 +38,7 @@ class ViewBackendService {
     /// If the index is null, the view will be added to the end of the list.
     int? index,
     ViewSectionPB? section,
+    final String? viewId,
   }) {
     final payload = CreateViewPayloadPB.create()
       ..parentViewId = parentViewId
@@ -61,6 +62,10 @@ class ViewBackendService {
 
     if (section != null) {
       payload.section = section;
+    }
+
+    if (viewId != null) {
+      payload.viewId = viewId;
     }
 
     return FolderEventCreateView(payload).send();
@@ -95,13 +100,11 @@ class ViewBackendService {
     required ViewLayoutPB layoutType,
     required String name,
   }) {
-    return ViewBackendService.createView(
+    return createView(
       layoutType: layoutType,
       parentViewId: parentViewId,
       name: name,
-      ext: {
-        'database_id': databaseId,
-      },
+      ext: {'database_id': databaseId},
     );
   }
 
@@ -135,8 +138,26 @@ class ViewBackendService {
 
   static Future<FlowyResult<void, FlowyError>> duplicate({
     required ViewPB view,
+    required bool openAfterDuplicate,
+    // should include children views
+    required bool includeChildren,
+    String? parentViewId,
+    String? suffix,
   }) {
-    return FolderEventDuplicateView(view).send();
+    final payload = DuplicateViewPayloadPB.create()
+      ..viewId = view.id
+      ..openAfterDuplicate = openAfterDuplicate
+      ..includeChildren = includeChildren;
+
+    if (parentViewId != null) {
+      payload.parentViewId = parentViewId;
+    }
+
+    if (suffix != null) {
+      payload.suffix = suffix;
+    }
+
+    return FolderEventDuplicateView(payload).send();
   }
 
   static Future<FlowyResult<void, FlowyError>> favorite({
@@ -150,6 +171,7 @@ class ViewBackendService {
     required String viewId,
     String? name,
     bool? isFavorite,
+    String? extra,
   }) {
     final payload = UpdateViewPayloadPB.create()..viewId = viewId;
 
@@ -161,15 +183,20 @@ class ViewBackendService {
       payload.isFavorite = isFavorite;
     }
 
+    if (extra != null) {
+      payload.extra = extra;
+    }
+
     return FolderEventUpdateView(payload).send();
   }
 
   static Future<FlowyResult<void, FlowyError>> updateViewIcon({
     required String viewId,
     required String viewIcon,
+    ViewIconTypePB iconType = ViewIconTypePB.Emoji,
   }) {
     final icon = ViewIconPB()
-      ..ty = ViewIconTypePB.Emoji
+      ..ty = iconType
       ..value = viewIcon;
     final payload = UpdateViewIconPayloadPB.create()
       ..viewId = viewId
@@ -214,49 +241,13 @@ class ViewBackendService {
     return FolderEventMoveNestedView(payload).send();
   }
 
-  Future<List<ViewPB>> fetchViewsWithLayoutType(
-    ViewLayoutPB? layoutType,
-  ) async {
-    final views = await fetchViews();
-    if (layoutType == null) {
-      return views;
-    }
-    return views
-        .where(
-          (element) => layoutType == element.layout,
-        )
-        .toList();
-  }
-
-  Future<List<ViewPB>> fetchViews() async {
-    final result = <ViewPB>[];
-    return FolderEventReadCurrentWorkspace().send().then((value) async {
-      final workspace = value.toNullable();
-      if (workspace != null) {
-        final views = workspace.views;
-        for (final view in views) {
-          result.add(view);
-          final childViews = await getAllViews(view);
-          result.addAll(childViews);
-        }
-      }
-      return result;
-    });
-  }
-
-  Future<List<ViewPB>> getAllViews(ViewPB view) async {
-    final result = <ViewPB>[];
-    final childViews = await getChildViews(viewId: view.id).then(
-      (value) => value.toNullable(),
-    );
-    if (childViews != null && childViews.isNotEmpty) {
-      result.addAll(childViews);
-      final views = await Future.wait(
-        childViews.map((e) async => getAllViews(e)),
-      );
-      result.addAll(views.expand((element) => element));
-    }
-    return result;
+  /// Fetches a flattened list of all Views.
+  ///
+  /// Views do not contain their children in this list, as they all exist
+  /// in the same level in this version.
+  ///
+  static Future<FlowyResult<RepeatedViewPB, FlowyError>> getAllViews() async {
+    return FolderEventGetAllViews().send();
   }
 
   static Future<FlowyResult<ViewPB, FlowyError>> getView(

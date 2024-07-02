@@ -13,7 +13,7 @@ part 'menu_user_bloc.freezed.dart';
 class MenuUserBloc extends Bloc<MenuUserEvent, MenuUserState> {
   MenuUserBloc(this.userProfile)
       : _userListener = UserListener(userProfile: userProfile),
-        _userWorkspaceListener = UserWorkspaceListener(),
+        _userWorkspaceListener = FolderListener(),
         _userService = UserBackendService(userId: userProfile.id),
         super(MenuUserState.initial(userProfile)) {
     _dispatch();
@@ -21,7 +21,7 @@ class MenuUserBloc extends Bloc<MenuUserEvent, MenuUserState> {
 
   final UserBackendService _userService;
   final UserListener _userListener;
-  final UserWorkspaceListener _userWorkspaceListener;
+  final FolderListener _userWorkspaceListener;
   final UserProfilePB userProfile;
 
   @override
@@ -38,9 +38,6 @@ class MenuUserBloc extends Bloc<MenuUserEvent, MenuUserState> {
           initial: () async {
             _userListener.start(onProfileUpdated: _profileUpdated);
             await _initUser();
-          },
-          fetchWorkspaces: () async {
-            //
           },
           didReceiveUserProfile: (UserProfilePB newUserProfile) {
             emit(state.copyWith(userProfile: newUserProfile));
@@ -70,9 +67,7 @@ class MenuUserBloc extends Bloc<MenuUserEvent, MenuUserState> {
       return;
     }
     userProfileOrFailed.fold(
-      (newUserProfile) => add(
-        MenuUserEvent.didReceiveUserProfile(newUserProfile),
-      ),
+      (profile) => add(MenuUserEvent.didReceiveUserProfile(profile)),
       (err) => Log.error(err),
     );
   }
@@ -81,7 +76,6 @@ class MenuUserBloc extends Bloc<MenuUserEvent, MenuUserState> {
 @freezed
 class MenuUserEvent with _$MenuUserEvent {
   const factory MenuUserEvent.initial() = _Initial;
-  const factory MenuUserEvent.fetchWorkspaces() = _FetchWorkspaces;
   const factory MenuUserEvent.updateUserName(String name) = _UpdateUserName;
   const factory MenuUserEvent.didReceiveUserProfile(
     UserProfilePB newUserProfile,

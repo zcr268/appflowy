@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use collab_folder::{View, ViewLayout};
+use collab_folder::{View, ViewIcon, ViewLayout};
 
 use flowy_derive::{ProtoBuf, ProtoBuf_Enum};
 use flowy_error::ErrorCode;
@@ -57,6 +57,21 @@ pub struct ViewPB {
 
   #[pb(index = 8)]
   pub is_favorite: bool,
+
+  #[pb(index = 9, one_of)]
+  pub extra: Option<String>,
+
+  // user_id
+  #[pb(index = 10, one_of)]
+  pub created_by: Option<i64>,
+
+  // timestamp
+  #[pb(index = 11)]
+  pub last_edited: i64,
+
+  // user_id
+  #[pb(index = 12, one_of)]
+  pub last_edited_by: Option<i64>,
 }
 
 pub fn view_pb_without_child_views(view: View) -> ViewPB {
@@ -69,6 +84,27 @@ pub fn view_pb_without_child_views(view: View) -> ViewPB {
     layout: view.layout.into(),
     icon: view.icon.clone().map(|icon| icon.into()),
     is_favorite: view.is_favorite,
+    extra: view.extra,
+    created_by: view.created_by,
+    last_edited: view.last_edited_time,
+    last_edited_by: view.last_edited_by,
+  }
+}
+
+pub fn view_pb_without_child_views_from_arc(view: Arc<View>) -> ViewPB {
+  ViewPB {
+    id: view.id.clone(),
+    parent_view_id: view.parent_view_id.clone(),
+    name: view.name.clone(),
+    create_time: view.created_at,
+    child_views: Default::default(),
+    layout: view.layout.clone().into(),
+    icon: view.icon.clone().map(|icon| icon.into()),
+    is_favorite: view.is_favorite,
+    extra: view.extra.clone(),
+    created_by: view.created_by,
+    last_edited: view.last_edited_time,
+    last_edited_by: view.last_edited_by,
   }
 }
 
@@ -86,6 +122,10 @@ pub fn view_pb_with_child_views(view: Arc<View>, child_views: Vec<Arc<View>>) ->
     layout: view.layout.clone().into(),
     icon: view.icon.clone().map(|icon| icon.into()),
     is_favorite: view.is_favorite,
+    extra: view.extra.clone(),
+    created_by: view.created_by,
+    last_edited: view.last_edited_time,
+    last_edited_by: view.last_edited_by,
   }
 }
 
@@ -96,6 +136,7 @@ pub enum ViewLayoutPB {
   Grid = 1,
   Board = 2,
   Calendar = 3,
+  Chat = 4,
 }
 
 impl ViewLayoutPB {
@@ -114,6 +155,7 @@ impl std::convert::From<ViewLayout> for ViewLayoutPB {
       ViewLayout::Board => ViewLayoutPB::Board,
       ViewLayout::Document => ViewLayoutPB::Document,
       ViewLayout::Calendar => ViewLayoutPB::Calendar,
+      ViewLayout::Chat => ViewLayoutPB::Chat,
     }
   }
 }
@@ -131,6 +173,26 @@ pub struct SectionViewsPB {
 pub struct RepeatedViewPB {
   #[pb(index = 1)]
   pub items: Vec<ViewPB>,
+}
+
+#[derive(Eq, PartialEq, Debug, Default, ProtoBuf, Clone)]
+pub struct RepeatedFavoriteViewPB {
+  #[pb(index = 1)]
+  pub items: Vec<SectionViewPB>,
+}
+
+#[derive(Eq, PartialEq, Debug, Default, ProtoBuf, Clone)]
+pub struct RepeatedRecentViewPB {
+  #[pb(index = 1)]
+  pub items: Vec<SectionViewPB>,
+}
+
+#[derive(Eq, PartialEq, Debug, Default, ProtoBuf, Clone)]
+pub struct SectionViewPB {
+  #[pb(index = 1)]
+  pub item: ViewPB,
+  #[pb(index = 2)]
+  pub timestamp: i64,
 }
 
 impl std::convert::From<Vec<ViewPB>> for RepeatedViewPB {
@@ -196,6 +258,14 @@ pub struct CreateViewPayloadPB {
   // The view in private section will only be shown in the user's private view list.
   #[pb(index = 10, one_of)]
   pub section: Option<ViewSectionPB>,
+
+  #[pb(index = 11, one_of)]
+  pub view_id: Option<String>,
+
+  // The extra data of the view.
+  // Refer to the extra field in the collab
+  #[pb(index = 12, one_of)]
+  pub extra: Option<String>,
 }
 
 #[derive(Eq, PartialEq, Hash, Debug, ProtoBuf_Enum, Clone, Default)]
@@ -243,6 +313,10 @@ pub struct CreateViewParams {
   pub index: Option<u32>,
   // The section of the view.
   pub section: Option<ViewSectionPB>,
+  // The icon of the view.
+  pub icon: Option<ViewIcon>,
+  // The extra data of the view.
+  pub extra: Option<String>,
 }
 
 impl TryInto<CreateViewParams> for CreateViewPayloadPB {
@@ -251,7 +325,8 @@ impl TryInto<CreateViewParams> for CreateViewPayloadPB {
   fn try_into(self) -> Result<CreateViewParams, Self::Error> {
     let name = ViewName::parse(self.name)?.0;
     let parent_view_id = ViewIdentify::parse(self.parent_view_id)?.0;
-    let view_id = gen_view_id().to_string();
+    // if view_id is not provided, generate a new view_id
+    let view_id = self.view_id.unwrap_or_else(|| gen_view_id().to_string());
 
     Ok(CreateViewParams {
       parent_view_id,
@@ -264,6 +339,8 @@ impl TryInto<CreateViewParams> for CreateViewPayloadPB {
       set_as_current: self.set_as_current,
       index: self.index,
       section: self.section,
+      icon: None,
+      extra: self.extra,
     })
   }
 }
@@ -286,6 +363,8 @@ impl TryInto<CreateViewParams> for CreateOrphanViewPayloadPB {
       set_as_current: false,
       index: None,
       section: None,
+      icon: None,
+      extra: None,
     })
   }
 }
@@ -340,6 +419,20 @@ pub struct UpdateViewPayloadPB {
 
   #[pb(index = 6, one_of)]
   pub is_favorite: Option<bool>,
+
+  #[pb(index = 7, one_of)]
+  // this value used to store the extra data with JSON format
+  // for document:
+  //  - cover: { type: "", value: "" }
+  //    - type: "0" represents normal color,
+  //            "1" represents gradient color,
+  //            "2" represents built-in image,
+  //            "3" represents custom image,
+  //            "4" represents local image,
+  //            "5" represents unsplash image
+  //  - line_height_layout: "small" or "normal" or "large"
+  //  - font_layout: "small", or "normal", or "large"
+  pub extra: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -350,6 +443,7 @@ pub struct UpdateViewParams {
   pub thumbnail: Option<String>,
   pub layout: Option<ViewLayout>,
   pub is_favorite: Option<bool>,
+  pub extra: Option<String>,
 }
 
 impl TryInto<UpdateViewParams> for UpdateViewPayloadPB {
@@ -377,6 +471,7 @@ impl TryInto<UpdateViewParams> for UpdateViewPayloadPB {
       thumbnail,
       is_favorite,
       layout: self.layout.map(|ty| ty.into()),
+      extra: self.extra,
     })
   }
 }
@@ -482,6 +577,56 @@ pub struct UpdateViewVisibilityStatusPayloadPB {
 
   #[pb(index = 2)]
   pub is_public: bool,
+}
+
+#[derive(Default, ProtoBuf)]
+pub struct DuplicateViewPayloadPB {
+  #[pb(index = 1)]
+  pub view_id: String,
+
+  #[pb(index = 2)]
+  pub open_after_duplicate: bool,
+
+  #[pb(index = 3)]
+  pub include_children: bool,
+
+  // duplicate the view to the specified parent view.
+  // if the parent_view_id is None, the view will be duplicated to the same parent view.
+  #[pb(index = 4, one_of)]
+  pub parent_view_id: Option<String>,
+
+  // The suffix of the duplicated view name.
+  // If the suffix is None, the duplicated view will have the same name with (copy) suffix.
+  #[pb(index = 5, one_of)]
+  pub suffix: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct DuplicateViewParams {
+  pub view_id: String,
+
+  pub open_after_duplicate: bool,
+
+  pub include_children: bool,
+
+  pub parent_view_id: Option<String>,
+
+  pub suffix: Option<String>,
+}
+
+impl TryInto<DuplicateViewParams> for DuplicateViewPayloadPB {
+  type Error = ErrorCode;
+
+  fn try_into(self) -> Result<DuplicateViewParams, Self::Error> {
+    let view_id = ViewIdentify::parse(self.view_id)?.0;
+    Ok(DuplicateViewParams {
+      view_id,
+      open_after_duplicate: self.open_after_duplicate,
+      include_children: self.include_children,
+      parent_view_id: self.parent_view_id,
+      suffix: self.suffix,
+    })
+  }
 }
 
 // impl<'de> Deserialize<'de> for ViewDataType {

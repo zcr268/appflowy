@@ -2,9 +2,9 @@ use collab_integrate::collab_builder::AppFlowyCollabBuilder;
 use collab_integrate::CollabKVDB;
 use collab_user::core::MutexUserAwareness;
 use flowy_error::{internal_error, ErrorCode, FlowyResult};
-use flowy_folder_pub::entities::ImportData;
+
 use flowy_server_pub::AuthenticatorType;
-use flowy_sqlite::kv::StorePreferences;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_sqlite::schema::user_table;
 use flowy_sqlite::ConnectionPool;
 use flowy_sqlite::{query_dsl::*, DBConnection, ExpressionMethods};
@@ -36,19 +36,19 @@ use crate::migrations::AnonUser;
 use crate::services::authenticate_user::AuthenticateUser;
 use crate::services::cloud_config::get_cloud_config;
 use crate::services::collab_interact::{CollabInteract, DefaultCollabInteract};
-use crate::services::data_import::importer::import_data;
-use crate::services::data_import::ImportContext;
 
 use crate::services::sqlite_sql::user_sql::{select_user_profile, UserTable, UserTableChangeset};
 use crate::user_manager::manager_user_encryption::validate_encryption_sign;
-use crate::user_manager::manager_user_workspace::save_user_workspaces;
+use crate::user_manager::manager_user_workspace::save_all_user_workspaces;
 use crate::user_manager::user_login_state::UserAuthProcess;
 use crate::{errors::FlowyError, notification::*};
 use flowy_user_pub::session::Session;
 
+use super::manager_user_workspace::save_user_workspace;
+
 pub struct UserManager {
   pub(crate) cloud_services: Arc<dyn UserCloudServiceProvider>,
-  pub(crate) store_preferences: Arc<StorePreferences>,
+  pub(crate) store_preferences: Arc<KVStorePreferences>,
   pub(crate) user_awareness: Arc<Mutex<Option<MutexUserAwareness>>>,
   pub(crate) user_status_callback: RwLock<Arc<dyn UserStatusCallback>>,
   pub(crate) collab_builder: Weak<AppFlowyCollabBuilder>,
@@ -63,7 +63,7 @@ pub struct UserManager {
 impl UserManager {
   pub fn new(
     cloud_services: Arc<dyn UserCloudServiceProvider>,
-    store_preferences: Arc<StorePreferences>,
+    store_preferences: Arc<KVStorePreferences>,
     collab_builder: Weak<AppFlowyCollabBuilder>,
     authenticate_user: Arc<AuthenticateUser>,
     user_workspace_service: Arc<dyn UserWorkspaceService>,
@@ -110,7 +110,7 @@ impl UserManager {
     }
   }
 
-  pub fn get_store_preferences(&self) -> Weak<StorePreferences> {
+  pub fn get_store_preferences(&self) -> Weak<KVStorePreferences> {
     Arc::downgrade(&self.store_preferences)
   }
 
@@ -133,6 +133,7 @@ impl UserManager {
 
     if let Ok(session) = self.get_session() {
       let user = self.get_user_profile_from_disk(session.user_id).await?;
+
       // Get the current authenticator from the environment variable
       let current_authenticator = current_authenticator();
 
@@ -151,9 +152,10 @@ impl UserManager {
 
       event!(
         tracing::Level::INFO,
-        "init user session: {}:{}",
+        "init user session: {}:{}, authenticator: {:?}",
         user.uid,
-        user.email
+        user.email,
+        user.authenticator,
       );
 
       self.prepare_user(&session).await;
@@ -165,6 +167,10 @@ impl UserManager {
       if user.authenticator.is_appflowy_cloud() {
         if let Err(err) = self.cloud_services.set_token(&user.token) {
           error!("Set token failed: {}", err);
+        }
+
+        if let Err(err) = self.cloud_services.set_ai_model(&user.ai_model) {
+          error!("Set ai model failed: {}", err);
         }
 
         // Subscribe the token state
@@ -516,7 +522,6 @@ impl UserManager {
 
   pub async fn prepare_user(&self, session: &Session) {
     let _ = self.authenticate_user.database.close(session.user_id);
-    self.prepare_collab(session);
   }
 
   pub async fn prepare_backup(&self, session: &Session) {
@@ -665,10 +670,7 @@ impl UserManager {
     self.cloud_services.set_user_authenticator(authenticator);
 
     let auth_service = self.cloud_services.get_user_service()?;
-    let url = auth_service
-      .generate_sign_in_url_with_email(email)
-      .await
-      .map_err(|err| FlowyError::server_error().with_context(err))?;
+    let url = auth_service.generate_sign_in_url_with_email(email).await?;
     Ok(url)
   }
 
@@ -677,11 +679,14 @@ impl UserManager {
     email: &str,
     redirect_to: &str,
   ) -> Result<(), FlowyError> {
+    self
+      .cloud_services
+      .set_user_authenticator(&Authenticator::AppFlowyCloud);
     let auth_service = self.cloud_services.get_user_service()?;
     auth_service
       .sign_in_with_magic_link(email, redirect_to)
-      .await
-      .map_err(|err| FlowyError::server_error().with_context(err))
+      .await?;
+    Ok(())
   }
 
   pub(crate) async fn generate_oauth_url(
@@ -712,19 +717,17 @@ impl UserManager {
       self.set_anon_user(session.clone());
     }
 
-    save_user_workspaces(uid, self.db_connection(uid)?, response.user_workspaces())?;
-    event!(tracing::Level::INFO, "Save new user profile to disk");
+    save_all_user_workspaces(uid, self.db_connection(uid)?, response.user_workspaces())?;
+    info!(
+      "Save new user profile to disk, authenticator: {:?}",
+      authenticator
+    );
 
     self.authenticate_user.set_session(Some(session.clone()))?;
     self
       .save_user(uid, (user_profile, authenticator.clone()).into())
       .await?;
     Ok(())
-  }
-
-  fn prepare_collab(&self, session: &Session) {
-    let collab_builder = self.collab_builder.upgrade().unwrap();
-    collab_builder.initialize(session.user_workspace.id.clone());
   }
 
   async fn handler_user_update(&self, user_update: UserUpdate) -> FlowyResult<()> {
@@ -785,33 +788,15 @@ impl UserManager {
     }
 
     // Save the old user workspace setting.
-    save_user_workspaces(
+    save_user_workspace(
       old_user.session.user_id,
       self
         .authenticate_user
         .database
         .get_connection(old_user.session.user_id)?,
-      &[old_user.session.user_workspace.clone()],
+      &old_user.session.user_workspace.clone(),
     )?;
     Ok(())
-  }
-
-  pub(crate) async fn import_appflowy_data(
-    &self,
-    context: ImportContext,
-  ) -> Result<ImportData, FlowyError> {
-    let session = self.get_session()?;
-    let user_collab_db = self
-      .authenticate_user
-      .database
-      .get_collab_db(session.user_id)?;
-    let import_data = tokio::task::spawn_blocking(move || {
-      import_data(&session, context, user_collab_db)
-        .map_err(|err| FlowyError::new(ErrorCode::AppFlowyDataFolderImportError, err.to_string()))
-    })
-    .await
-    .map_err(internal_error)??;
-    Ok(import_data)
   }
 }
 
@@ -823,7 +808,7 @@ fn current_authenticator() -> Authenticator {
   }
 }
 
-fn upsert_user_profile_change(
+pub fn upsert_user_profile_change(
   uid: i64,
   mut conn: DBConnection,
   changeset: UserTableChangeset,

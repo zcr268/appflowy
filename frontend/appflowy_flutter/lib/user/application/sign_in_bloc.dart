@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:appflowy/env/cloud_env.dart';
+import 'package:appflowy/generated/locale_keys.g.dart';
 import 'package:appflowy/startup/startup.dart';
 import 'package:appflowy/startup/tasks/appflowy_cloud_task.dart';
 import 'package:appflowy/user/application/auth/auth_service.dart';
@@ -7,7 +10,7 @@ import 'package:appflowy_backend/protobuf/flowy-error/errors.pb.dart';
 import 'package:appflowy_backend/protobuf/flowy-user/protobuf.dart'
     show UserProfilePB;
 import 'package:appflowy_result/appflowy_result.dart';
-import 'package:flutter/foundation.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -28,19 +31,12 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
       (event, emit) async {
         await event.when(
           signedInWithUserEmailAndPassword: () async => _onSignIn(emit),
-          signedInWithOAuth: (platform) async => _onSignInWithOAuth(
-            emit,
-            platform,
-          ),
+          signedInWithOAuth: (platform) async =>
+              _onSignInWithOAuth(emit, platform),
           signedInAsGuest: () async => _onSignInAsGuest(emit),
-          signedWithMagicLink: (email) async => _onSignInWithMagicLink(
-            emit,
-            email,
-          ),
-          deepLinkStateChange: (result) => _onDeepLinkStateChange(
-            emit,
-            result,
-          ),
+          signedWithMagicLink: (email) async =>
+              _onSignInWithMagicLink(emit, email),
+          deepLinkStateChange: (result) => _onDeepLinkStateChange(emit, result),
           cancel: () {
             emit(
               state.copyWith(
@@ -68,6 +64,9 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
                 successOrFail: null,
               ),
             );
+          },
+          switchLoginType: (type) {
+            emit(state.copyWith(loginType: type));
           },
         );
       },
@@ -120,9 +119,7 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
     }
   }
 
-  Future<void> _onSignIn(
-    Emitter<SignInState> emit,
-  ) async {
+  Future<void> _onSignIn(Emitter<SignInState> emit) async {
     final result = await authService.signInWithEmailPassword(
       email: state.email ?? '',
       password: state.password ?? '',
@@ -151,9 +148,7 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
       ),
     );
 
-    final result = await authService.signUpWithOAuth(
-      platform: platform,
-    );
+    final result = await authService.signUpWithOAuth(platform: platform);
     emit(
       result.fold(
         (userProfile) => state.copyWith(
@@ -178,15 +173,11 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
       ),
     );
 
-    final result = await authService.signInWithMagicLink(
-      email: email,
-    );
+    final result = await authService.signInWithMagicLink(email: email);
 
     emit(
       result.fold(
-        (userProfile) => state.copyWith(
-          isSubmitting: true,
-        ),
+        (userProfile) => state.copyWith(isSubmitting: true),
         (error) => _stateFromCode(error),
       ),
     );
@@ -230,10 +221,19 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
           passwordError: error.msg,
           emailError: null,
         );
+      case ErrorCode.UserUnauthorized:
+        return state.copyWith(
+          isSubmitting: false,
+          successOrFail: FlowyResult.failure(
+            FlowyError(msg: LocaleKeys.signIn_limitRateError.tr()),
+          ),
+        );
       default:
         return state.copyWith(
           isSubmitting: false,
-          successOrFail: FlowyResult.failure(error),
+          successOrFail: FlowyResult.failure(
+            FlowyError(msg: LocaleKeys.signIn_generalError.tr()),
+          ),
         );
     }
   }
@@ -253,6 +253,14 @@ class SignInEvent with _$SignInEvent {
   const factory SignInEvent.deepLinkStateChange(DeepLinkResult result) =
       DeepLinkStateChange;
   const factory SignInEvent.cancel() = _Cancel;
+  const factory SignInEvent.switchLoginType(LoginType type) = _SwitchLoginType;
+}
+
+// we support sign in directly without sign up, but we want to allow the users to sign up if they want to
+// this type is only for the UI to know which form to show
+enum LoginType {
+  signIn,
+  signUp,
 }
 
 @freezed
@@ -264,6 +272,7 @@ class SignInState with _$SignInState {
     required String? passwordError,
     required String? emailError,
     required FlowyResult<UserProfilePB, FlowyError>? successOrFail,
+    @Default(LoginType.signIn) LoginType loginType,
   }) = _SignInState;
 
   factory SignInState.initial() => const SignInState(

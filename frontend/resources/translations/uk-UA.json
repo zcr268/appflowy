@@ -43,10 +43,10 @@
     "unmatchedPasswordError": "Повторний пароль не співпадає з паролем",
     "syncPromptMessage": "Синхронізація даних може зайняти трохи часу. Будь ласка, не закривайте цю сторінку",
     "or": "АБО",
+    "signInWith": "Увійти за допомогою:",
     "LogInWithGoogle": "Увійти за допомогою Google",
     "LogInWithGithub": "Увійти за допомогою Github",
-    "LogInWithDiscord": "Увійти за допомогою Discord",
-    "signInWith": "Увійти за допомогою:"
+    "LogInWithDiscord": "Увійти за допомогою Discord"
   },
   "workspace": {
     "chooseWorkspace": "Виберіть свій робочий простір",
@@ -194,6 +194,7 @@
   },
   "button": {
     "ok": "OK",
+    "done": "Готово",
     "cancel": "Скасувати",
     "signIn": "Увійти",
     "signOut": "Вийти",
@@ -210,7 +211,6 @@
     "edit": "Редагувати",
     "delete": "Видалити",
     "duplicate": "Дублювати",
-    "done": "Готово",
     "putback": "Повернути"
   },
   "label": {
@@ -284,13 +284,13 @@
       "themeUpload": {
         "button": "Завантажити",
         "uploadTheme": "Завантажити тему",
-        "description": "Завантажте свою власну тему AppFlowy, скориставшись кнопкою нижче.",
-        "failure": "Тему, яка була завантажена, має неправильний формат.",
+        "description": "Завантажте свою власну тему @:appName, скориставшись кнопкою нижче.",
         "loading": "Будь ласка, зачекайте, поки ми перевіряємо та завантажуємо вашу тему...",
         "uploadSuccess": "Вашу тему успішно завантажено",
         "deletionFailure": "Не вдалося видалити тему. Спробуйте видалити її вручну.",
         "filePickerDialogTitle": "Виберіть файл .flowy_plugin",
-        "urlUploadFailure": "Не вдалося відкрити URL: {}"
+        "urlUploadFailure": "Не вдалося відкрити URL: {}",
+        "failure": "Тему, яка була завантажена, має неправильний формат."
       },
       "theme": "Тема",
       "builtInsLabel": "Вбудовані теми",
@@ -315,7 +315,7 @@
       "defaultLocation": "Де зараз зберігаються ваші дані",
       "exportData": "Експортуйте свої дані",
       "doubleTapToCopy": "Подвійний натиск для копіювання шляху",
-      "restoreLocation": "Відновити до шляху за замовчуванням AppFlowy",
+      "restoreLocation": "Відновити до шляху за замовчуванням @:appName",
       "customizeLocation": "Відкрити іншу папку",
       "restartApp": "Будь ласка, перезапустіть програму для врахування змін.",
       "exportDatabase": "Експорт бази даних",
@@ -327,10 +327,10 @@
       "defineWhereYourDataIsStored": "Визначте, де зберігаються ваші дані",
       "open": "Відкрити",
       "openFolder": "Відкрити існуючу папку",
-      "openFolderDesc": "Читати та записувати в вашу існуючу папку AppFlowy",
+      "openFolderDesc": "Читати та записувати в вашу існуючу папку @:appName",
       "folderHintText": "ім'я папки",
       "location": "Створення нової папки",
-      "locationDesc": "Оберіть ім'я для папки з даними AppFlowy",
+      "locationDesc": "Оберіть ім'я для папки з даними @:appName",
       "browser": "Перегляд",
       "create": "Створити",
       "set": "Встановити",
@@ -341,7 +341,7 @@
       "change": "Змінити",
       "openLocationTooltips": "Відкрити інший каталог даних",
       "openCurrentDataFolder": "Відкрити поточний каталог даних",
-      "recoverLocationTooltips": "Скинути до каталогу даних за замовчуванням AppFlowy",
+      "recoverLocationTooltips": "Скинути до каталогу даних за замовчуванням @:appName",
       "exportFileSuccess": "Файл успішно експортовано!",
       "exportFileFail": "Помилка експорту файлу!",
       "export": "Експорт"
@@ -720,7 +720,7 @@
       "referencedCalendarPrefix": "Вид на"
     },
     "errorDialog": {
-      "title": "Помилка в AppFlowy",
+      "title": "Помилка в @:appName",
       "howToFixFallback": "Вибачте за незручності! Надішліть звіт про помилку на нашу сторінку GitHub, де ви опишіть свою помилку.",
       "github": "Переглянути на GitHub"
     },

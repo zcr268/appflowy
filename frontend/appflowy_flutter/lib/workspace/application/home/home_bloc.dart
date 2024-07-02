@@ -4,18 +4,17 @@ import 'package:appflowy_backend/protobuf/flowy-folder/view.pb.dart';
 import 'package:appflowy_backend/protobuf/flowy-folder/workspace.pb.dart'
     show WorkspaceSettingPB;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flowy_infra/time/duration.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 part 'home_bloc.freezed.dart';
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   HomeBloc(WorkspaceSettingPB workspaceSetting)
-      : _workspaceListener = UserWorkspaceListener(),
+      : _workspaceListener = FolderListener(),
         super(HomeState.initial(workspaceSetting)) {
     _dispatch(workspaceSetting);
   }
 
-  final UserWorkspaceListener _workspaceListener;
+  final FolderListener _workspaceListener;
 
   @override
   Future<void> close() async {
@@ -62,22 +61,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         );
       },
     );
-  }
-}
-
-enum MenuResizeType {
-  slide,
-  drag,
-}
-
-extension MenuResizeTypeExtension on MenuResizeType {
-  Duration duration() {
-    switch (this) {
-      case MenuResizeType.drag:
-        return 30.milliseconds;
-      case MenuResizeType.slide:
-        return 350.milliseconds;
-    }
   }
 }
 

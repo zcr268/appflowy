@@ -9,11 +9,10 @@ use nanoid::nanoid;
 use parking_lot::Once;
 use tempfile::TempDir;
 use tracing_subscriber::{fmt::Subscriber, util::SubscriberInitExt, EnvFilter};
-use uuid::Uuid;
 
 use collab_integrate::collab_builder::{
   AppFlowyCollabBuilder, CollabCloudPluginProvider, CollabPluginProviderContext,
-  CollabPluginProviderType,
+  CollabPluginProviderType, WorkspaceCollabIntegrate,
 };
 use collab_integrate::CollabKVDB;
 use flowy_document::document::MutexDocument;
@@ -21,8 +20,10 @@ use flowy_document::entities::{DocumentSnapshotData, DocumentSnapshotMeta};
 use flowy_document::manager::{DocumentManager, DocumentSnapshotService, DocumentUserService};
 use flowy_document_pub::cloud::*;
 use flowy_error::{ErrorCode, FlowyError, FlowyResult};
-use flowy_storage::ObjectStorageService;
+use flowy_storage_pub::chunked_byte::ChunkedBytes;
+use flowy_storage_pub::storage::{CreatedUpload, StorageService};
 use lib_infra::async_trait::async_trait;
+use lib_infra::box_any::BoxAny;
 use lib_infra::future::FutureResult;
 
 pub struct DocumentTest {
@@ -33,11 +34,19 @@ impl DocumentTest {
   pub fn new() -> Self {
     let user = FakeUser::new();
     let cloud_service = Arc::new(LocalTestDocumentCloudServiceImpl());
-    let file_storage = Arc::new(DocumentTestFileStorageService) as Arc<dyn ObjectStorageService>;
+    let file_storage = Arc::new(DocumentTestFileStorageService) as Arc<dyn StorageService>;
     let document_snapshot = Arc::new(DocumentTestSnapshot);
+
+    let builder = Arc::new(AppFlowyCollabBuilder::new(
+      DefaultCollabStorageProvider(),
+      WorkspaceCollabIntegrateImpl {
+        workspace_id: user.workspace_id.clone(),
+      },
+    ));
+
     let manager = DocumentManager::new(
       Arc::new(user),
-      default_collab_builder(),
+      builder,
       cloud_service,
       Arc::downgrade(&file_storage),
       document_snapshot,
@@ -55,6 +64,7 @@ impl Deref for DocumentTest {
 }
 
 pub struct FakeUser {
+  workspace_id: String,
   collab_db: Arc<CollabKVDB>,
 }
 
@@ -65,8 +75,12 @@ impl FakeUser {
     let tempdir = TempDir::new().unwrap();
     let path = tempdir.into_path();
     let collab_db = Arc::new(CollabKVDB::open(path).unwrap());
+    let workspace_id = uuid::Uuid::new_v4().to_string();
 
-    Self { collab_db }
+    Self {
+      collab_db,
+      workspace_id,
+    }
   }
 }
 
@@ -76,7 +90,7 @@ impl DocumentUserService for FakeUser {
   }
 
   fn workspace_id(&self) -> Result<String, FlowyError> {
-    Ok(Uuid::new_v4().to_string())
+    Ok(self.workspace_id.clone())
   }
 
   fn collab_db(&self, _uid: i64) -> Result<std::sync::Weak<CollabKVDB>, FlowyError> {
@@ -100,17 +114,10 @@ pub fn setup_log() {
   });
 }
 
-pub fn default_collab_builder() -> Arc<AppFlowyCollabBuilder> {
-  let builder =
-    AppFlowyCollabBuilder::new(DefaultCollabStorageProvider(), "fake_device_id".to_string());
-  builder.initialize(uuid::Uuid::new_v4().to_string());
-  Arc::new(builder)
-}
-
 pub async fn create_and_open_empty_document() -> (DocumentTest, Arc<MutexDocument>, String) {
   let test = DocumentTest::new();
   let doc_id: String = gen_document_id();
-  let data = default_document_data();
+  let data = default_document_data(&doc_id);
   let uid = test.user_service.user_id().unwrap();
   // create a document
   test
@@ -118,6 +125,7 @@ pub async fn create_and_open_empty_document() -> (DocumentTest, Arc<MutexDocumen
     .await
     .unwrap();
 
+  test.open_document(&doc_id).await.unwrap();
   let document = test.get_document(&doc_id).await.unwrap();
 
   (test, document, data.page_id)
@@ -167,27 +175,44 @@ impl DocumentCloudService for LocalTestDocumentCloudServiceImpl {
 }
 
 pub struct DocumentTestFileStorageService;
-impl ObjectStorageService for DocumentTestFileStorageService {
-  fn get_object_url(
+
+#[async_trait]
+impl StorageService for DocumentTestFileStorageService {
+  fn upload_object(
     &self,
-    _object_id: flowy_storage::ObjectIdentity,
+    _workspace_id: &str,
+    _local_file_path: &str,
   ) -> FutureResult<String, FlowyError> {
     todo!()
   }
 
-  fn put_object(
+  fn delete_object(&self, _url: String, _local_file_path: String) -> FlowyResult<()> {
+    todo!()
+  }
+
+  fn download_object(&self, _url: String, _local_file_path: String) -> FlowyResult<()> {
+    todo!()
+  }
+
+  fn create_upload(
     &self,
-    _url: String,
-    _object_value: flowy_storage::ObjectValue,
-  ) -> FutureResult<(), FlowyError> {
+    _workspace_id: &str,
+    _parent_dir: &str,
+    _local_file_path: &str,
+  ) -> FutureResult<CreatedUpload, flowy_error::FlowyError> {
     todo!()
   }
 
-  fn delete_object(&self, _url: String) -> FutureResult<(), FlowyError> {
+  async fn start_upload(&self, _chunks: &ChunkedBytes, _record: &BoxAny) -> Result<(), FlowyError> {
     todo!()
   }
 
-  fn get_object(&self, _url: String) -> FutureResult<flowy_storage::ObjectValue, FlowyError> {
+  async fn resume_upload(
+    &self,
+    _workspace_id: &str,
+    _parent_dir: &str,
+    _file_id: &str,
+  ) -> Result<(), FlowyError> {
     todo!()
   }
 }
@@ -220,5 +245,18 @@ impl DocumentSnapshotService for DocumentTestSnapshot {
 
   fn get_document_snapshot(&self, _snapshot_id: &str) -> FlowyResult<DocumentSnapshotData> {
     todo!()
+  }
+}
+
+struct WorkspaceCollabIntegrateImpl {
+  workspace_id: String,
+}
+impl WorkspaceCollabIntegrate for WorkspaceCollabIntegrateImpl {
+  fn workspace_id(&self) -> Result<String, Error> {
+    Ok(self.workspace_id.clone())
+  }
+
+  fn device_id(&self) -> Result<String, Error> {
+    Ok("fake_device_id".to_string())
   }
 }

@@ -9,12 +9,14 @@ import 'package:appflowy/workspace/application/settings/appflowy_cloud_setting_b
 import 'package:appflowy/workspace/application/settings/appflowy_cloud_urls_bloc.dart';
 import 'package:appflowy/workspace/presentation/settings/widgets/_restart_app_button.dart';
 import 'package:appflowy/workspace/presentation/widgets/dialogs.dart';
+import 'package:appflowy/workspace/presentation/widgets/toggle/toggle.dart';
 import 'package:appflowy_backend/dispatch/dispatch.dart';
 import 'package:appflowy_backend/protobuf/flowy-error/errors.pb.dart';
 import 'package:appflowy_backend/protobuf/flowy-user/user_setting.pb.dart';
 import 'package:appflowy_result/appflowy_result.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flowy_infra/size.dart';
+import 'package:flowy_infra/theme_extension.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
 import 'package:flowy_infra_ui/widget/error_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,11 +44,11 @@ class AppFlowyCloudViewSetting extends StatelessWidget {
             (setting) => _renderContent(context, setting),
             (err) => FlowyErrorPage.message(err.toString(), howToFix: ""),
           );
-        } else {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
         }
+
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
       },
     );
   }
@@ -289,7 +291,7 @@ class CloudURLInputState extends State<CloudURLInput> {
             .copyWith(fontWeight: FontWeight.w400, fontSize: 16),
         enabledBorder: UnderlineInputBorder(
           borderSide:
-              BorderSide(color: Theme.of(context).colorScheme.onBackground),
+              BorderSide(color: AFThemeExtension.of(context).onBackground),
         ),
         focusedBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
@@ -313,14 +315,11 @@ class AppFlowyCloudEnableSync extends StatelessWidget {
           children: [
             FlowyText.medium(LocaleKeys.settings_menu_enableSync.tr()),
             const Spacer(),
-            Switch.adaptive(
-              onChanged: (bool value) {
-                context.read<AppFlowyCloudSettingBloc>().add(
-                      AppFlowyCloudSettingEvent.enableSync(value),
-                    );
-              },
-              activeColor: Theme.of(context).colorScheme.primary,
+            Toggle(
               value: state.setting.enableSync,
+              onChanged: (value) => context
+                  .read<AppFlowyCloudSettingBloc>()
+                  .add(AppFlowyCloudSettingEvent.enableSync(!value)),
             ),
           ],
         );

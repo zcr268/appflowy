@@ -11,13 +11,16 @@ use flowy_error::FlowyResult;
 use crate::entities::{
   CheckboxTypeOptionPB, ChecklistTypeOptionPB, DateTypeOptionPB, FieldType,
   MultiSelectTypeOptionPB, NumberTypeOptionPB, RelationTypeOptionPB, RichTextTypeOptionPB,
-  SingleSelectTypeOptionPB, TimestampTypeOptionPB, URLTypeOptionPB,
+  SingleSelectTypeOptionPB, SummarizationTypeOptionPB, TimeTypeOptionPB, TimestampTypeOptionPB,
+  TranslateTypeOptionPB, URLTypeOptionPB,
 };
 use crate::services::cell::CellDataDecoder;
 use crate::services::field::checklist_type_option::ChecklistTypeOption;
+use crate::services::field::summary_type_option::summary::SummarizationTypeOption;
+use crate::services::field::translate_type_option::translate::TranslateTypeOption;
 use crate::services::field::{
   CheckboxTypeOption, DateTypeOption, MultiSelectTypeOption, NumberTypeOption, RelationTypeOption,
-  RichTextTypeOption, SingleSelectTypeOption, TimestampTypeOption, URLTypeOption,
+  RichTextTypeOption, SingleSelectTypeOption, TimeTypeOption, TimestampTypeOption, URLTypeOption,
 };
 use crate::services::filter::{ParseFilterData, PreFillCellsWithFilter};
 use crate::services::sort::SortCondition;
@@ -181,6 +184,13 @@ pub fn type_option_data_from_pb<T: Into<Bytes>>(
     FieldType::Relation => {
       RelationTypeOptionPB::try_from(bytes).map(|pb| RelationTypeOption::from(pb).into())
     },
+    FieldType::Summary => {
+      SummarizationTypeOptionPB::try_from(bytes).map(|pb| SummarizationTypeOption::from(pb).into())
+    },
+    FieldType::Time => TimeTypeOptionPB::try_from(bytes).map(|pb| TimeTypeOption::from(pb).into()),
+    FieldType::Translate => {
+      TranslateTypeOptionPB::try_from(bytes).map(|pb| TranslateTypeOption::from(pb).into())
+    },
   }
 }
 
@@ -242,6 +252,22 @@ pub fn type_option_to_pb(type_option: TypeOptionData, field_type: &FieldType) ->
         .try_into()
         .unwrap()
     },
+    FieldType::Summary => {
+      let summarization_type_option: SummarizationTypeOption = type_option.into();
+      SummarizationTypeOptionPB::from(summarization_type_option)
+        .try_into()
+        .unwrap()
+    },
+    FieldType::Time => {
+      let time_type_option: TimeTypeOption = type_option.into();
+      TimeTypeOptionPB::from(time_type_option).try_into().unwrap()
+    },
+    FieldType::Translate => {
+      let translate_type_option: TranslateTypeOption = type_option.into();
+      TranslateTypeOptionPB::from(translate_type_option)
+        .try_into()
+        .unwrap()
+    },
   }
 }
 
@@ -252,7 +278,6 @@ pub fn default_type_option_data_from_type(field_type: FieldType) -> TypeOptionDa
     FieldType::DateTime => DateTypeOption::default().into(),
     FieldType::LastEditedTime | FieldType::CreatedTime => TimestampTypeOption {
       field_type,
-      include_time: true,
       ..Default::default()
     }
     .into(),
@@ -262,5 +287,8 @@ pub fn default_type_option_data_from_type(field_type: FieldType) -> TypeOptionDa
     FieldType::URL => URLTypeOption::default().into(),
     FieldType::Checklist => ChecklistTypeOption.into(),
     FieldType::Relation => RelationTypeOption::default().into(),
+    FieldType::Summary => SummarizationTypeOption::default().into(),
+    FieldType::Translate => TranslateTypeOption::default().into(),
+    FieldType::Time => TimeTypeOption.into(),
   }
 }

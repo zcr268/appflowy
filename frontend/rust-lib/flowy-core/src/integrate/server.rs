@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use serde_repr::*;
 
 use flowy_error::{FlowyError, FlowyResult};
+use flowy_server::af_cloud::define::ServerUser;
 use flowy_server::af_cloud::AppFlowyCloudServer;
 use flowy_server::local_server::{LocalServer, LocalServerDB};
 use flowy_server::supabase::SupabaseServer;
@@ -13,7 +14,7 @@ use flowy_server::{AppFlowyEncryption, AppFlowyServer, EncryptionImpl};
 use flowy_server_pub::af_cloud_config::AFCloudConfiguration;
 use flowy_server_pub::supabase_config::SupabaseConfiguration;
 use flowy_server_pub::AuthenticatorType;
-use flowy_sqlite::kv::StorePreferences;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_user_pub::entities::*;
 
 use crate::AppFlowyCoreConfig;
@@ -58,11 +59,12 @@ pub struct ServerProvider {
   providers: RwLock<HashMap<Server, Arc<dyn AppFlowyServer>>>,
   pub(crate) encryption: RwLock<Arc<dyn AppFlowyEncryption>>,
   #[allow(dead_code)]
-  pub(crate) store_preferences: Weak<StorePreferences>,
+  pub(crate) store_preferences: Weak<KVStorePreferences>,
   pub(crate) user_enable_sync: RwLock<bool>,
 
   /// The authenticator type of the user.
   authenticator: RwLock<Authenticator>,
+  user: Arc<dyn ServerUser>,
   pub(crate) uid: Arc<RwLock<Option<i64>>>,
 }
 
@@ -70,8 +72,10 @@ impl ServerProvider {
   pub fn new(
     config: AppFlowyCoreConfig,
     server: Server,
-    store_preferences: Weak<StorePreferences>,
+    store_preferences: Weak<KVStorePreferences>,
+    server_user: impl ServerUser + 'static,
   ) -> Self {
+    let user = Arc::new(server_user);
     let encryption = EncryptionImpl::new(None);
     Self {
       config,
@@ -81,6 +85,7 @@ impl ServerProvider {
       encryption: RwLock::new(Arc::new(encryption)),
       store_preferences,
       uid: Default::default(),
+      user,
     }
   }
 
@@ -128,7 +133,8 @@ impl ServerProvider {
           config,
           *self.user_enable_sync.read(),
           self.config.device_id.clone(),
-          &self.config.app_version,
+          self.config.app_version.clone(),
+          self.user.clone(),
         ));
 
         Ok::<Arc<dyn AppFlowyServer>, FlowyError>(server)

@@ -1,5 +1,5 @@
 use flowy_error::{ErrorCode, FlowyError, FlowyResult};
-use flowy_sqlite::kv::StorePreferences;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_user_pub::cloud::UserCloudConfig;
 use flowy_user_pub::entities::*;
 use lib_dispatch::prelude::*;
@@ -14,7 +14,7 @@ use crate::notification::{send_notification, UserNotification};
 use crate::services::cloud_config::{
   get_cloud_config, get_or_create_cloud_config, save_cloud_config,
 };
-use crate::services::data_import::get_appflowy_data_folder_import_context;
+use crate::services::data_import::prepare_import;
 use crate::user_manager::UserManager;
 
 fn upgrade_manager(manager: AFPluginState<Weak<UserManager>>) -> FlowyResult<Arc<UserManager>> {
@@ -25,8 +25,8 @@ fn upgrade_manager(manager: AFPluginState<Weak<UserManager>>) -> FlowyResult<Arc
 }
 
 fn upgrade_store_preferences(
-  store: AFPluginState<Weak<StorePreferences>>,
-) -> FlowyResult<Arc<StorePreferences>> {
+  store: AFPluginState<Weak<KVStorePreferences>>,
+) -> FlowyResult<Arc<KVStorePreferences>> {
   let store = store
     .upgrade()
     .ok_or(FlowyError::internal().with_context("The store preferences is already drop"))?;
@@ -151,7 +151,7 @@ const APPEARANCE_SETTING_CACHE_KEY: &str = "appearance_settings";
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn set_appearance_setting(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
   data: AFPluginData<AppearanceSettingsPB>,
 ) -> Result<(), FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
@@ -165,7 +165,7 @@ pub async fn set_appearance_setting(
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn get_appearance_setting(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> DataResult<AppearanceSettingsPB, FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
   match store_preferences.get_str(APPEARANCE_SETTING_CACHE_KEY) {
@@ -187,7 +187,7 @@ const DATE_TIME_SETTINGS_CACHE_KEY: &str = "date_time_settings";
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn set_date_time_settings(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
   data: AFPluginData<DateTimeSettingsPB>,
 ) -> Result<(), FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
@@ -202,7 +202,7 @@ pub async fn set_date_time_settings(
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn get_date_time_settings(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> DataResult<DateTimeSettingsPB, FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
   match store_preferences.get_str(DATE_TIME_SETTINGS_CACHE_KEY) {
@@ -227,7 +227,7 @@ const NOTIFICATION_SETTINGS_CACHE_KEY: &str = "notification_settings";
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn set_notification_settings(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
   data: AFPluginData<NotificationSettingsPB>,
 ) -> Result<(), FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
@@ -238,7 +238,7 @@ pub async fn set_notification_settings(
 
 #[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn get_notification_settings(
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> DataResult<NotificationSettingsPB, FlowyError> {
   let store_preferences = upgrade_store_preferences(store_preferences)?;
   match store_preferences.get_str(NOTIFICATION_SETTINGS_CACHE_KEY) {
@@ -266,10 +266,11 @@ pub async fn import_appflowy_data_folder_handler(
   af_spawn(async move {
     let result = async {
       let manager = upgrade_manager(manager)?;
-      let context = get_appflowy_data_folder_import_context(&data.path)
+      let imported_folder = prepare_import(&data.path)
         .map_err(|err| FlowyError::new(ErrorCode::AppFlowyDataFolderImportError, err.to_string()))?
         .with_container_name(data.import_container_name);
-      manager.import_appflowy_data_folder(context).await?;
+
+      manager.perform_import(imported_folder).await?;
       Ok::<(), FlowyError>(())
     }
     .await;
@@ -347,7 +348,7 @@ pub async fn sign_in_with_provider_handler(
 pub async fn set_encrypt_secret_handler(
   manager: AFPluginState<Weak<UserManager>>,
   data: AFPluginData<UserSecretPB>,
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> Result<(), FlowyError> {
   let manager = upgrade_manager(manager)?;
   let store_preferences = upgrade_store_preferences(store_preferences)?;
@@ -407,7 +408,7 @@ pub async fn check_encrypt_secret_handler(
 pub async fn set_cloud_config_handler(
   manager: AFPluginState<Weak<UserManager>>,
   data: AFPluginData<UpdateCloudConfigPB>,
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> Result<(), FlowyError> {
   let manager = upgrade_manager(manager)?;
   let session = manager.get_session()?;
@@ -467,7 +468,7 @@ pub async fn set_cloud_config_handler(
 #[tracing::instrument(level = "info", skip_all, err)]
 pub async fn get_cloud_config_handler(
   manager: AFPluginState<Weak<UserManager>>,
-  store_preferences: AFPluginState<Weak<StorePreferences>>,
+  store_preferences: AFPluginState<Weak<KVStorePreferences>>,
 ) -> DataResult<CloudSettingPB, FlowyError> {
   let manager = upgrade_manager(manager)?;
   let session = manager.get_session()?;
@@ -492,7 +493,7 @@ pub async fn get_all_workspace_handler(
   data_result_ok(user_workspaces.into())
 }
 
-#[tracing::instrument(level = "debug", skip(data, manager), err)]
+#[tracing::instrument(level = "info", skip(data, manager), err)]
 pub async fn open_workspace_handler(
   data: AFPluginData<UserWorkspaceIdPB>,
   manager: AFPluginState<Weak<UserManager>>,
@@ -623,19 +624,6 @@ pub async fn update_reminder_event_handler(
 }
 
 #[tracing::instrument(level = "debug", skip_all, err)]
-pub async fn add_workspace_member_handler(
-  data: AFPluginData<AddWorkspaceMemberPB>,
-  manager: AFPluginState<Weak<UserManager>>,
-) -> Result<(), FlowyError> {
-  let data = data.try_into_inner()?;
-  let manager = upgrade_manager(manager)?;
-  manager
-    .add_workspace_member(data.email, data.workspace_id)
-    .await?;
-  Ok(())
-}
-
-#[tracing::instrument(level = "debug", skip_all, err)]
 pub async fn delete_workspace_member_handler(
   data: AFPluginData<RemoveWorkspaceMemberPB>,
   manager: AFPluginState<Weak<UserManager>>,
@@ -649,7 +637,7 @@ pub async fn delete_workspace_member_handler(
 }
 
 #[tracing::instrument(level = "debug", skip_all, err)]
-pub async fn get_workspace_member_handler(
+pub async fn get_workspace_members_handler(
   data: AFPluginData<QueryWorkspacePB>,
   manager: AFPluginState<Weak<UserManager>>,
 ) -> DataResult<RepeatedWorkspaceMemberPB, FlowyError> {
@@ -772,4 +760,97 @@ pub async fn leave_workspace_handler(
   let manager = upgrade_manager(manager)?;
   manager.leave_workspace(&workspace_id).await?;
   Ok(())
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn subscribe_workspace_handler(
+  params: AFPluginData<SubscribeWorkspacePB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<PaymentLinkPB, FlowyError> {
+  let params = params.try_into_inner()?;
+  let manager = upgrade_manager(manager)?;
+  let payment_link = manager.subscribe_workspace(params).await?;
+  data_result_ok(PaymentLinkPB { payment_link })
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn get_workspace_subscriptions_handler(
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<RepeatedWorkspaceSubscriptionPB, FlowyError> {
+  let manager = upgrade_manager(manager)?;
+  let subs = manager
+    .get_workspace_subscriptions()
+    .await?
+    .into_iter()
+    .map(WorkspaceSubscriptionPB::from)
+    .collect::<Vec<_>>();
+  data_result_ok(RepeatedWorkspaceSubscriptionPB { items: subs })
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn cancel_workspace_subscription_handler(
+  param: AFPluginData<UserWorkspaceIdPB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> Result<(), FlowyError> {
+  let workspace_id = param.into_inner().workspace_id;
+  let manager = upgrade_manager(manager)?;
+  manager.cancel_workspace_subscription(workspace_id).await?;
+  Ok(())
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn get_workspace_usage_handler(
+  param: AFPluginData<UserWorkspaceIdPB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<WorkspaceUsagePB, FlowyError> {
+  let workspace_id = param.into_inner().workspace_id;
+  let manager = upgrade_manager(manager)?;
+  let workspace_usage = manager.get_workspace_usage(workspace_id).await?;
+  data_result_ok(WorkspaceUsagePB {
+    member_count: workspace_usage.member_count as u64,
+    member_count_limit: workspace_usage.member_count_limit as u64,
+    total_blob_bytes: workspace_usage.total_blob_bytes as u64,
+    total_blob_bytes_limit: workspace_usage.total_blob_bytes_limit as u64,
+  })
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn get_billing_portal_handler(
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<BillingPortalPB, FlowyError> {
+  let manager = upgrade_manager(manager)?;
+  let url = manager.get_billing_portal_url().await?;
+  data_result_ok(BillingPortalPB { url })
+}
+
+#[tracing::instrument(level = "debug", skip_all, err)]
+pub async fn get_workspace_member_info(
+  param: AFPluginData<WorkspaceMemberIdPB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<WorkspaceMemberPB, FlowyError> {
+  let manager = upgrade_manager(manager)?;
+  let member = manager.get_workspace_member_info(param.uid).await?;
+  data_result_ok(member.into())
+}
+
+#[tracing::instrument(level = "info", skip_all, err)]
+pub async fn update_workspace_setting(
+  params: AFPluginData<UpdateUserWorkspaceSettingPB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> Result<(), FlowyError> {
+  let params = params.try_into_inner()?;
+  let manager = upgrade_manager(manager)?;
+  manager.update_workspace_setting(params).await?;
+  Ok(())
+}
+
+#[tracing::instrument(level = "info", skip_all, err)]
+pub async fn get_workspace_setting(
+  params: AFPluginData<UserWorkspaceIdPB>,
+  manager: AFPluginState<Weak<UserManager>>,
+) -> DataResult<UseAISettingPB, FlowyError> {
+  let params = params.try_into_inner()?;
+  let manager = upgrade_manager(manager)?;
+  let pb = manager.get_workspace_settings(&params.workspace_id).await?;
+  data_result_ok(pb)
 }

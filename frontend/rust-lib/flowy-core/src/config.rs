@@ -2,21 +2,22 @@ use std::fmt;
 use std::path::Path;
 
 use base64::Engine;
+use semver::Version;
 use tracing::{error, info};
 
 use flowy_server_pub::af_cloud_config::AFCloudConfiguration;
 use flowy_server_pub::supabase_config::SupabaseConfiguration;
 use flowy_user::services::entities::URL_SAFE_ENGINE;
 use lib_infra::file_util::copy_dir_recursive;
-use lib_infra::util::Platform;
+use lib_infra::util::OperatingSystem;
 
 use crate::integrate::log::create_log_filter;
 
 #[derive(Clone)]
 pub struct AppFlowyCoreConfig {
   /// Different `AppFlowyCoreConfig` instance should have different name
-  pub(crate) app_version: String,
-  pub(crate) name: String,
+  pub(crate) app_version: Version,
+  pub name: String,
   pub(crate) device_id: String,
   pub platform: String,
   /// Used to store the user data
@@ -75,7 +76,7 @@ fn make_user_data_folder(root: &str, url: &str) -> String {
 
 impl AppFlowyCoreConfig {
   pub fn new(
-    app_version: String,
+    app_version: Version,
     custom_application_path: String,
     application_path: String,
     device_id: String,
@@ -93,7 +94,7 @@ impl AppFlowyCoreConfig {
       },
       Some(config) => make_user_data_folder(&custom_application_path, &config.base_url),
     };
-    let log_filter = create_log_filter("info".to_owned(), vec![], Platform::from(&platform));
+    let log_filter = create_log_filter("info".to_owned(), vec![], OperatingSystem::from(&platform));
 
     AppFlowyCoreConfig {
       app_version,
@@ -111,7 +112,7 @@ impl AppFlowyCoreConfig {
     self.log_filter = create_log_filter(
       level.to_owned(),
       with_crates,
-      Platform::from(&self.platform),
+      OperatingSystem::from(&self.platform),
     );
     self
   }

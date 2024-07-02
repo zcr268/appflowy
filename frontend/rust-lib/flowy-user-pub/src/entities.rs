@@ -139,7 +139,7 @@ pub struct UserWorkspace {
   pub created_at: DateTime<Utc>,
   /// The database storage id is used indexing all the database views in current workspace.
   #[serde(rename = "database_storage_id")]
-  pub workspace_database_object_id: String,
+  pub database_indexer_id: String,
   #[serde(default)]
   pub icon: String,
 }
@@ -150,7 +150,7 @@ impl UserWorkspace {
       id: workspace_id.to_string(),
       name: "".to_string(),
       created_at: Utc::now(),
-      workspace_database_object_id: Uuid::new_v4().to_string(),
+      database_indexer_id: Uuid::new_v4().to_string(),
       icon: "".to_string(),
     }
   }
@@ -171,6 +171,7 @@ pub struct UserProfile {
   // If the encryption_sign is not empty, which means the user has enabled the encryption.
   pub encryption_type: EncryptionType,
   pub updated_at: i64,
+  pub ai_model: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
@@ -249,6 +250,7 @@ where
       encryption_type: value.encryption_type(),
       stability_ai_key,
       updated_at: value.updated_at(),
+      ai_model: "".to_string(),
     }
   }
 }
@@ -264,6 +266,7 @@ pub struct UpdateUserProfileParams {
   pub stability_ai_key: Option<String>,
   pub encryption_sign: Option<String>,
   pub token: Option<String>,
+  pub ai_model: Option<String>,
 }
 
 impl UpdateUserProfileParams {
@@ -315,6 +318,11 @@ impl UpdateUserProfileParams {
       EncryptionType::SelfEncryption(sign) => sign,
     };
     self.encryption_sign = Some(sign);
+    self
+  }
+
+  pub fn with_ai_model(mut self, ai_model: &str) -> Self {
+    self.ai_model = Some(ai_model.to_owned());
     self
   }
 
@@ -384,17 +392,40 @@ pub enum UserTokenState {
 }
 
 // Workspace Role
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
 pub enum Role {
-  Owner,
-  Member,
-  Guest,
+  Owner = 0,
+  Member = 1,
+  Guest = 2,
+}
+
+impl From<i32> for Role {
+  fn from(value: i32) -> Self {
+    match value {
+      0 => Role::Owner,
+      1 => Role::Member,
+      2 => Role::Guest,
+      _ => Role::Guest,
+    }
+  }
+}
+
+impl From<Role> for i32 {
+  fn from(value: Role) -> Self {
+    match value {
+      Role::Owner => 0,
+      Role::Member => 1,
+      Role::Guest => 2,
+    }
+  }
 }
 
 pub struct WorkspaceMember {
   pub email: String,
   pub role: Role,
   pub name: String,
+  pub avatar_url: Option<String>,
 }
 
 /// represent the user awareness object id for the workspace.
@@ -420,4 +451,30 @@ pub struct WorkspaceInvitation {
   pub inviter_name: Option<String>,
   pub status: WorkspaceInvitationStatus,
   pub updated_at: DateTime<Utc>,
+}
+
+pub enum RecurringInterval {
+  Month,
+  Year,
+}
+
+pub enum SubscriptionPlan {
+  None,
+  Pro,
+  Team,
+}
+
+pub struct WorkspaceSubscription {
+  pub workspace_id: String,
+  pub subscription_plan: SubscriptionPlan,
+  pub recurring_interval: RecurringInterval,
+  pub is_active: bool,
+  pub canceled_at: Option<i64>,
+}
+
+pub struct WorkspaceUsage {
+  pub member_count: usize,
+  pub member_count_limit: usize,
+  pub total_blob_bytes: usize,
+  pub total_blob_bytes_limit: usize,
 }

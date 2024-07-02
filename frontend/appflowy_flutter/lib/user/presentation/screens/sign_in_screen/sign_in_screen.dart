@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'package:appflowy/startup/startup.dart';
 import 'package:appflowy/user/application/sign_in_bloc.dart';
 import 'package:appflowy/user/presentation/router.dart';
@@ -5,15 +7,12 @@ import 'package:appflowy/user/presentation/screens/sign_in_screen/desktop_sign_i
 import 'package:appflowy/user/presentation/screens/sign_in_screen/mobile_loading_screen.dart';
 import 'package:appflowy/user/presentation/screens/sign_in_screen/mobile_sign_in_screen.dart';
 import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../helpers/helpers.dart';
 
 class SignInScreen extends StatelessWidget {
-  const SignInScreen({
-    super.key,
-  });
+  const SignInScreen({super.key});
 
   static const routeName = '/SignInScreen';
 
@@ -39,9 +38,7 @@ class SignInScreen extends StatelessWidget {
                 ? const MobileLoadingScreen()
                 : const MobileSignInScreen();
           }
-          return DesktopSignInScreen(
-            isLoading: isLoading,
-          );
+          return const DesktopSignInScreen();
         },
       ),
     );

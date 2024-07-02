@@ -30,8 +30,7 @@ class FieldCellBloc extends Bloc<FieldCellEvent, FieldCellState> {
             emit(state.copyWith(width: width));
           },
           endUpdateWidth: () {
-            if (state.width !=
-                state.fieldInfo.fieldSettings?.width.toDouble()) {
+            if (state.width != state.fieldInfo.width) {
               _fieldSettingsService.updateFieldSettings(
                 fieldId: state.fieldInfo.id,
                 width: state.width,
@@ -60,7 +59,7 @@ class FieldCellState with _$FieldCellState {
   factory FieldCellState.initial(FieldInfo fieldInfo) => FieldCellState(
         fieldInfo: fieldInfo,
         isResizing: false,
-        width: fieldInfo.fieldSettings!.width.toDouble(),
+        width: fieldInfo.width!.toDouble(),
         resizeStart: 0,
       );
 

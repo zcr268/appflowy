@@ -39,6 +39,7 @@ Future<String?> saveImageToLocalStorage(String localImagePath) async {
 
 Future<(String? path, String? errorMessage)> saveImageToCloudStorage(
   String localImagePath,
+  String documentId,
 ) async {
   final size = localImagePath.fileSize;
   if (size == null || size > 10 * 1024 * 1024) {
@@ -49,9 +50,10 @@ Future<(String? path, String? errorMessage)> saveImageToCloudStorage(
     );
   }
   final documentService = DocumentService();
+  Log.debug("Uploading image local path: $localImagePath");
   final result = await documentService.uploadFile(
     localFilePath: localImagePath,
-    isAsync: false,
+    documentId: documentId,
   );
   return result.fold(
     (s) async {

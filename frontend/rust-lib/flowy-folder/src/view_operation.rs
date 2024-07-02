@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bytes::Bytes;
+
+use collab_entity::EncodedCollab;
 pub use collab_folder::View;
 use collab_folder::ViewLayout;
 use tokio::sync::RwLock;
@@ -52,18 +54,17 @@ pub trait FolderOperationHandler {
   /// * `view_id`: the view id
   /// * `name`: the name of the view
   /// * `data`: initial data of the view. The data should be parsed by the [FolderOperationHandler]
-  /// implementation. For example, the data of the database will be [DatabaseData].
+  /// implementation.
+  /// For example,
+  /// 1. the data of the database will be [DatabaseData] that is serialized to JSON
+  /// 2. the data of the document will be [DocumentData] that is serialized to JSON
   /// * `layout`: the layout of the view
   /// * `meta`: use to carry extra information. For example, the database view will use this
   /// to carry the reference database id.
   fn create_view_with_view_data(
     &self,
     user_id: i64,
-    view_id: &str,
-    name: &str,
-    data: Vec<u8>,
-    layout: ViewLayout,
-    meta: HashMap<String, String>,
+    params: CreateViewParams,
   ) -> FutureResult<(), FlowyError>;
 
   /// Create a view with the pre-defined data.
@@ -78,6 +79,8 @@ pub trait FolderOperationHandler {
   ) -> FutureResult<(), FlowyError>;
 
   /// Create a view by importing data
+  ///
+  /// The return value
   fn import_from_bytes(
     &self,
     uid: i64,
@@ -85,7 +88,7 @@ pub trait FolderOperationHandler {
     name: &str,
     import_type: ImportType,
     bytes: Vec<u8>,
-  ) -> FutureResult<(), FlowyError>;
+  ) -> FutureResult<EncodedCollab, FlowyError>;
 
   /// Create a view by importing data from a file
   fn import_from_file_path(
@@ -111,6 +114,7 @@ impl From<ViewLayoutPB> for ViewLayout {
       ViewLayoutPB::Grid => ViewLayout::Grid,
       ViewLayoutPB::Board => ViewLayout::Board,
       ViewLayoutPB::Calendar => ViewLayout::Calendar,
+      ViewLayoutPB::Chat => ViewLayout::Chat,
     }
   }
 }
@@ -122,13 +126,14 @@ pub(crate) fn create_view(uid: i64, params: CreateViewParams, layout: ViewLayout
     parent_view_id: params.parent_view_id,
     name: params.name,
     desc: params.desc,
-    children: Default::default(),
     created_at: time,
     is_favorite: false,
     layout,
-    icon: None,
+    icon: params.icon,
     created_by: Some(uid),
     last_edited_time: 0,
     last_edited_by: Some(uid),
+    extra: params.extra,
+    children: Default::default(),
   }
 }

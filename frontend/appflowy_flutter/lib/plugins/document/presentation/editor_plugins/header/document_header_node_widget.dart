@@ -2,16 +2,20 @@ import 'dart:io';
 
 import 'package:appflowy/generated/flowy_svgs.g.dart';
 import 'package:appflowy/generated/locale_keys.g.dart';
+import 'package:appflowy/mobile/application/page_style/document_page_style_bloc.dart';
 import 'package:appflowy/mobile/presentation/bottom_sheet/bottom_sheet.dart';
 import 'package:appflowy/plugins/base/emoji/emoji_picker_screen.dart';
 import 'package:appflowy/plugins/base/icon/icon_picker.dart';
 import 'package:appflowy/plugins/document/application/document_bloc.dart';
+import 'package:appflowy/plugins/document/presentation/editor_plugins/header/desktop_cover.dart';
 import 'package:appflowy/plugins/document/presentation/editor_plugins/header/emoji_icon_widget.dart';
 import 'package:appflowy/plugins/document/presentation/editor_plugins/image/custom_image_block_component.dart';
 import 'package:appflowy/plugins/document/presentation/editor_plugins/image/image_util.dart';
 import 'package:appflowy/plugins/document/presentation/editor_plugins/image/upload_image_menu.dart';
+import 'package:appflowy/plugins/document/presentation/editor_plugins/migration/editor_migration.dart';
 import 'package:appflowy/plugins/document/presentation/editor_style.dart';
 import 'package:appflowy/shared/appflowy_network_image.dart';
+import 'package:appflowy/workspace/application/view/view_ext.dart';
 import 'package:appflowy/workspace/application/view/view_listener.dart';
 import 'package:appflowy_backend/protobuf/flowy-folder/view.pb.dart';
 import 'package:appflowy_editor/appflowy_editor.dart' hide UploadImageMenu;
@@ -24,12 +28,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:string_validator/string_validator.dart';
 
-import 'cover_editor.dart';
-
 const double kCoverHeight = 250.0;
 const double kIconHeight = 60.0;
 const double kToolbarHeight = 40.0; // with padding to the top
 
+// Remove this widget if the desktop support immersive cover.
 class DocumentHeaderBlockKeys {
   const DocumentHeaderBlockKeys._();
 
@@ -38,6 +41,7 @@ class DocumentHeaderBlockKeys {
   static const String icon = 'selected_icon';
 }
 
+// for the version under 0.5.5, including 0.5.5
 enum CoverType {
   none,
   color,
@@ -55,8 +59,8 @@ enum CoverType {
   }
 }
 
-class DocumentHeaderNodeWidget extends StatefulWidget {
-  const DocumentHeaderNodeWidget({
+class DocumentCoverWidget extends StatefulWidget {
+  const DocumentCoverWidget({
     super.key,
     required this.node,
     required this.editorState,
@@ -70,11 +74,10 @@ class DocumentHeaderNodeWidget extends StatefulWidget {
   final ViewPB view;
 
   @override
-  State<DocumentHeaderNodeWidget> createState() =>
-      _DocumentHeaderNodeWidgetState();
+  State<DocumentCoverWidget> createState() => _DocumentCoverWidgetState();
 }
 
-class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
+class _DocumentCoverWidgetState extends State<DocumentCoverWidget> {
   CoverType get coverType => CoverType.fromString(
         widget.node.attributes[DocumentHeaderBlockKeys.coverType],
       );
@@ -82,9 +85,13 @@ class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
       widget.node.attributes[DocumentHeaderBlockKeys.coverDetails];
   String? get icon => widget.node.attributes[DocumentHeaderBlockKeys.icon];
   bool get hasIcon => viewIcon.isNotEmpty;
-  bool get hasCover => coverType != CoverType.none;
+  bool get hasCover =>
+      coverType != CoverType.none ||
+      (cover != null && cover?.type != PageStyleCoverImageType.none);
 
   String viewIcon = '';
+  PageStyleCover? cover;
+  late ViewPB view;
   late final ViewListener viewListener;
 
   @override
@@ -92,6 +99,8 @@ class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
     super.initState();
     final value = widget.view.icon.value;
     viewIcon = value.isNotEmpty ? value : icon ?? '';
+    cover = widget.view.cover;
+    view = widget.view;
     widget.node.addListener(_reload);
     viewListener = ViewListener(
       viewId: widget.view.id,
@@ -99,6 +108,8 @@ class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
         onViewUpdated: (p0) {
           setState(() {
             viewIcon = p0.icon.value;
+            cover = p0.cover;
+            view = p0;
           });
         },
       );
@@ -129,6 +140,7 @@ class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
         ),
         if (hasCover)
           DocumentCover(
+            view: view,
             editorState: widget.editorState,
             node: widget.node,
             coverType: coverType,
@@ -188,8 +200,16 @@ class _DocumentHeaderNodeWidgetState extends State<DocumentHeaderNodeWidget> {
       widget.onIconChanged(icon);
     }
 
+    // compatible with version <= 0.5.5.
     transaction.updateNode(widget.node, attributes);
     await widget.editorState.apply(transaction);
+
+    // compatible with version > 0.5.5.
+    EditorMigration.migrateCoverIfNeeded(
+      widget.view,
+      attributes,
+      overwrite: true,
+    );
   }
 }
 
@@ -277,13 +297,14 @@ class _DocumentHeaderToolbarState extends State<DocumentHeaderToolbar> {
           leftIconSize: const Size.square(18),
           onTap: () => widget.onIconOrCoverChanged(
             cover: PlatformExtension.isDesktopOrWeb
-                ? (CoverType.asset, builtInAssetImages.first)
+                ? (CoverType.asset, '1')
                 : (CoverType.color, '0xffe8e0ff'),
           ),
           useIntrinsicWidth: true,
-          leftIcon: const FlowySvg(FlowySvgs.image_s),
+          leftIcon: const FlowySvg(FlowySvgs.add_cover_s),
           text: FlowyText.small(
             LocaleKeys.document_plugins_cover_addCover.tr(),
+            color: Theme.of(context).hintColor,
           ),
         ),
       );
@@ -292,28 +313,24 @@ class _DocumentHeaderToolbarState extends State<DocumentHeaderToolbar> {
     if (widget.hasIcon) {
       children.add(
         FlowyButton(
-          leftIconSize: const Size.square(18),
           onTap: () => widget.onIconOrCoverChanged(icon: ""),
           useIntrinsicWidth: true,
-          leftIcon: const Icon(
-            Icons.emoji_emotions_outlined,
-            size: 18,
-          ),
+          leftIcon: const FlowySvg(FlowySvgs.add_icon_s),
+          iconPadding: 4.0,
           text: FlowyText.small(
             LocaleKeys.document_plugins_cover_removeIcon.tr(),
+            color: Theme.of(context).hintColor,
           ),
         ),
       );
     } else {
       Widget child = FlowyButton(
-        leftIconSize: const Size.square(18),
         useIntrinsicWidth: true,
-        leftIcon: const Icon(
-          Icons.emoji_emotions_outlined,
-          size: 18,
-        ),
+        leftIcon: const FlowySvg(FlowySvgs.add_icon_s),
+        iconPadding: 4.0,
         text: FlowyText.small(
           LocaleKeys.document_plugins_cover_addIcon.tr(),
+          color: Theme.of(context).hintColor,
         ),
         onTap: PlatformExtension.isDesktop
             ? null
@@ -365,6 +382,7 @@ class _DocumentHeaderToolbarState extends State<DocumentHeaderToolbar> {
 class DocumentCover extends StatefulWidget {
   const DocumentCover({
     super.key,
+    required this.view,
     required this.node,
     required this.editorState,
     required this.coverType,
@@ -372,6 +390,7 @@ class DocumentCover extends StatefulWidget {
     required this.onChangeCover,
   });
 
+  final ViewPB view;
   final Node node;
   final EditorState editorState;
   final CoverType coverType;
@@ -406,7 +425,13 @@ class DocumentCoverState extends State<DocumentCover> {
             SizedBox(
               height: double.infinity,
               width: double.infinity,
-              child: _buildCoverImage(),
+              child: DesktopCover(
+                view: widget.view,
+                editorState: widget.editorState,
+                node: widget.node,
+                coverType: widget.coverType,
+                coverDetails: widget.coverDetails,
+              ),
             ),
             if (!isOverlayButtonsHidden) _buildCoverOverlayButtons(context),
           ],
@@ -616,7 +641,7 @@ class DocumentCoverState extends State<DocumentCover> {
         details = await saveImageToLocalStorage(details);
       } else {
         // else we should save the image to cloud storage
-        (details, _) = await saveImageToCloudStorage(details);
+        (details, _) = await saveImageToCloudStorage(details, widget.view.id);
       }
     }
     widget.onChangeCover(type, details);

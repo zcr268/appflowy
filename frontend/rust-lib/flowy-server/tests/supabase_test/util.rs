@@ -1,9 +1,9 @@
-use flowy_storage::ObjectStorageService;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use collab::core::collab::{DocStateSource, MutexCollab};
+use collab::core::collab::{DataSource, MutexCollab};
 use collab::core::origin::CollabOrigin;
+use collab::preclude::Collab;
 use collab_plugins::cloud_storage::RemoteCollabStorage;
 use uuid::Uuid;
 
@@ -15,10 +15,8 @@ use flowy_server::supabase::api::{
   SupabaseFolderServiceImpl, SupabaseServerServiceImpl, SupabaseUserServiceImpl,
 };
 use flowy_server::supabase::define::{USER_DEVICE_ID, USER_EMAIL, USER_UUID};
-use flowy_server::supabase::file_storage::core::SupabaseFileStorage;
 use flowy_server::{AppFlowyEncryption, EncryptionImpl};
 use flowy_server_pub::supabase_config::SupabaseConfiguration;
-use flowy_storage::{FileStoragePlan, StorageObject};
 use flowy_user_pub::cloud::UserCloudService;
 use lib_infra::future::FutureResult;
 
@@ -62,7 +60,7 @@ pub fn folder_service() -> Arc<dyn FolderCloudService> {
 }
 
 #[allow(dead_code)]
-pub fn file_storage_service() -> Arc<dyn ObjectStorageService> {
+pub fn file_storage_service() -> Arc<dyn ObjectStorageCloudService> {
   let encryption_impl: Arc<dyn AppFlowyEncryption> = Arc::new(EncryptionImpl::new(None));
   let config = SupabaseConfiguration::from_env().unwrap();
   Arc::new(
@@ -121,19 +119,19 @@ pub async fn print_encryption_folder_snapshot(
     .await
     .pop()
     .unwrap();
-  let collab = Arc::new(
-    MutexCollab::new_with_doc_state(
+  let collab = Arc::new(MutexCollab::new(
+    Collab::new_with_source(
       CollabOrigin::Empty,
       folder_id,
-      DocStateSource::FromDocState(snapshot.blob),
+      DataSource::DocStateV1(snapshot.blob),
       vec![],
       false,
     )
     .unwrap(),
-  );
+  ));
   let folder_data = Folder::open(uid, collab, None)
     .unwrap()
-    .get_folder_data()
+    .get_folder_data(folder_id)
     .unwrap();
   let json = serde_json::to_value(folder_data).unwrap();
   println!("{}", serde_json::to_string_pretty(&json).unwrap());
@@ -162,19 +160,3 @@ pub fn third_party_sign_up_param(uuid: String) -> HashMap<String, String> {
 }
 
 pub struct TestFileStoragePlan;
-
-impl FileStoragePlan for TestFileStoragePlan {
-  fn storage_size(&self) -> FutureResult<u64, FlowyError> {
-    // 1 GB
-    FutureResult::new(async { Ok(1024 * 1024 * 1024) })
-  }
-
-  fn maximum_file_size(&self) -> FutureResult<u64, FlowyError> {
-    // 5 MB
-    FutureResult::new(async { Ok(5 * 1024 * 1024) })
-  }
-
-  fn check_upload_object(&self, _object: &StorageObject) -> FutureResult<(), FlowyError> {
-    FutureResult::new(async { Ok(()) })
-  }
-}

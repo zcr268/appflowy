@@ -2,12 +2,14 @@
   "appName": "AppFlowy",
   "defaultUsername": "Ja",
   "welcomeText": "Witaj w @:appName",
+  "welcomeTo": "Witamy w",
   "githubStarText": "Gwiazdka na GitHub-ie",
   "subscribeNewsletterText": "Zapisz się do naszego Newslettera",
   "letsGoButtonText": "Start!",
   "title": "Tytuł",
   "youCanAlso": "Możesz również",
   "and": "i",
+  "failedToOpenUrl": "Nie udało się otworzyć adresu URL: {}",
   "blockActions": {
     "addBelowTooltip": "Kliknij, aby dodać poniżej",
     "addAboveCmd": "Alt+kliknięcie",
@@ -35,37 +37,59 @@
     "loginStartWithAnonymous": "Rozpocznij sesję anonimową",
     "continueAnonymousUser": "Kontynuuj sesję anonimową",
     "buttonText": "Zaloguj",
+    "signingInText": "Logowanie się...",
     "forgotPassword": "Zapomniałeś hasła?",
     "emailHint": "Email",
     "passwordHint": "Hasło",
     "dontHaveAnAccount": "Nie masz konta?",
+    "createAccount": "Utwórz konto",
     "repeatPasswordEmptyError": "Powtórzone hasło nie moze być puste",
     "unmatchedPasswordError": "Hasła nie są takie same",
     "syncPromptMessage": "Synchronizacja danych może chwilę potrwać. Proszę nie zamykać tej strony",
     "or": "ALBO",
+    "signInWithGoogle": "Zaloguj się za pomocą Google",
+    "signInWithGithub": "Zaloguj się za pomocą Githuba",
+    "signInWithDiscord": "Zaloguj się za pomocą Discorda",
+    "signUpWithGoogle": "Zarejestruj się za pomocą Google",
+    "signUpWithGithub": "Zarejestruj się za pomocą Githuba",
+    "signUpWithDiscord": "Zarejestruj się za pomocą Discorda",
+    "signInWith": "Zaloguj się korzystając z:",
+    "pleaseInputYourEmail": "Podaj swój adres e-mail",
+    "settings": "Ustawienia",
+    "logIn": "Zaloguj się",
+    "generalError": "Coś poszło nie tak. Spróbuj ponownie później",
     "LogInWithGoogle": "Zaloguj się za pomocą Google",
     "LogInWithGithub": "Zaloguj się za pomocą Githuba",
     "LogInWithDiscord": "Zaloguj się za pomocą Discorda",
-    "signInWith": "Zaloguj się korzystając z:",
     "loginAsGuestButtonText": "Rozpocznij"
   },
   "workspace": {
     "chooseWorkspace": "Wybierz swoją przestrzeń do pracy",
     "create": "Utwórz przestrzeń",
     "reset": "Zresetuj przestrzeń roboczą",
+    "renameWorkspace": "Zmień nazwę obszaru roboczego",
     "resetWorkspacePrompt": "Zresetowanie przestrzeni roboczej spowoduje usunięcie wszystkich znajdujących się w niej stron i danych. Czy na pewno chcesz zresetować przestrzeń roboczą? Alternatywnie możesz skontaktować się z zespołem pomocy technicznej, aby przywrócić przestrzeń roboczą",
     "hint": "przestrzeń robocza",
     "notFoundError": "Przestrzeni nie znaleziono",
-    "failedToLoad": "Coś poszło nie tak! Wczytywanie przestrzeni roboczej nie powiodło się. Spróbuj wyłączyć wszystkie otwarte instancje AppFlowy i spróbuj ponownie.",
+    "failedToLoad": "Coś poszło nie tak! Wczytywanie przestrzeni roboczej nie powiodło się. Spróbuj wyłączyć wszystkie otwarte instancje @:appName i spróbuj ponownie.",
     "errorActions": {
       "reportIssue": "Zgłoś problem",
+      "reportIssueOnGithub": "Zgłoś problem na Githubie",
       "reachOut": "Skontaktuj się na Discord"
-    }
+    },
+    "menuTitle": "Obszary robocze",
+    "deleteWorkspaceHintText": "Czy na pewno chcesz usunąć obszar roboczy? Tej akcji nie można cofnąć.",
+    "createSuccess": "Obszar roboczy został utworzony pomyślnie",
+    "createFailed": "Nie udało się utworzyć obszaru roboczego",
+    "deleteSuccess": "Obszar roboczy został pomyślnie usunięty",
+    "deleteFailed": "Nie udało się usunąć obszaru roboczego"
   },
   "shareAction": {
     "buttonText": "Udostępnij",
     "workInProgress": "Dostępne wkrótce",
     "markdown": "Markdown",
+    "html": "HTML",
+    "clipboard": "Skopiuj do schowka",
     "csv": "CSV",
     "copyLink": "Skopiuj link"
   },
@@ -75,7 +99,11 @@
     "large": "duży",
     "fontSize": "Rozmiar czcionki",
     "import": "Import",
-    "moreOptions": "Więcej opcji"
+    "moreOptions": "Więcej opcji",
+    "wordCount": "Liczba słów: {}",
+    "charCount": "Liczba znaków: {}",
+    "createdAt": "Utworzony: {}",
+    "deleteView": "Usuń"
   },
   "importPanel": {
     "textAndMarkdown": "Tekst i Markdown",
@@ -93,7 +121,8 @@
     "openNewTab": "Otwórz w nowej karcie",
     "moveTo": "Przenieś do",
     "addToFavorites": "Dodaj do ulubionych",
-    "copyLink": "Skopiuj link"
+    "copyLink": "Skopiuj link",
+    "changeIcon": "Zmień ikonę"
   },
   "blankPageTitle": "Pusta strona",
   "newPageText": "Nowa strona",
@@ -188,7 +217,10 @@
     "clickToHidePersonal": "Kliknij, aby ukryć sekcję osobistą",
     "clickToHideFavorites": "Kliknij, aby ukryć ulubioną sekcję",
     "addAPage": "Dodaj stronę",
-    "recent": "Najnowsze"
+    "recent": "Najnowsze",
+    "today": "Dziś",
+    "thisWeek": "Ten tydzień",
+    "favoriteSpace": "Ulubione"
   },
   "notifications": {
     "export": {
@@ -204,6 +236,7 @@
   },
   "button": {
     "ok": "OK",
+    "confirm": "Potwierdź",
     "done": "Zrobione",
     "cancel": "Anuluj",
     "signIn": "Zaloguj",
@@ -228,7 +261,21 @@
     "removeFromFavorites": "Usuń z ulubionych",
     "addToFavorites": "Dodaj do ulubionych",
     "rename": "Zmień nazwę",
-    "helpCenter": "Centrum Pomocy"
+    "helpCenter": "Centrum Pomocy",
+    "add": "Dodaj",
+    "yes": "Tak",
+    "clear": "Wyczyść",
+    "remove": "Usuń",
+    "login": "Zaloguj się",
+    "logout": "Wyloguj",
+    "deleteAccount": "Usuń konto",
+    "back": "Wstecz",
+    "signInGoogle": "Zaloguj się za pomocą Google",
+    "signInGithub": "Zaloguj się za pomocą Githuba",
+    "signInDiscord": "Zaloguj się za pomocą Discorda",
+    "more": "Więcej",
+    "create": "Utwórz",
+    "close": "Zamknij"
   },
   "label": {
     "welcome": "Witaj!",
@@ -252,6 +299,28 @@
   },
   "settings": {
     "title": "Ustawienia",
+    "accountPage": {
+      "menuLabel": "Moje konto",
+      "title": "Moje konto",
+      "general": {
+        "title": "Nazwa konta i zdjęcie profilowe",
+        "changeProfilePicture": "Zmień zdjęcie profilowe"
+      },
+      "email": {
+        "title": "E-mail",
+        "actions": {
+          "change": "Zmień adres e-mail"
+        }
+      },
+      "login": {
+        "loginLabel": "Zaloguj się",
+        "logoutLabel": "Wyloguj"
+      }
+    },
+    "workspacePage": {
+      "menuLabel": "Obszar roboczy",
+      "title": "Obszar roboczy"
+    },
     "menu": {
       "appearance": "Wygląd",
       "language": "Język",
@@ -310,7 +379,7 @@
       },
       "themeUpload": {
         "button": "Prześlij",
-        "description": "Prześlij własny motyw AppFlowy za pomocą przycisku poniżej.",
+        "description": "Prześlij własny motyw @:appName za pomocą przycisku poniżej.",
         "loading": "Poczekaj, aż zweryfikujemy i prześlemy Twój motyw...",
         "uploadSuccess": "Twój motyw został przesłany pomyślnie",
         "deletionFailure": "Nie udało się usunąć motywu. Spróbuj usunąć go ręcznie.",
@@ -341,7 +410,7 @@
       "defaultLocation": "Ścieżka katalogu z plikami",
       "exportData": "Eksportuj swoje dane",
       "doubleTapToCopy": "Kliknij dwukrotnie, aby skopiować ścieżkę",
-      "restoreLocation": "Przywróć domyślną ścieżkę AppFlowy",
+      "restoreLocation": "Przywróć domyślną ścieżkę @:appName",
       "customizeLocation": "Otwórz inny folder",
       "restartApp": "Uruchom ponownie aplikację, aby zmiany zaczęły obowiązywać.",
       "exportDatabase": "Eksportuj bazę danych",
@@ -353,10 +422,10 @@
       "defineWhereYourDataIsStored": "Zdefiniuj miejsce przechowywania Twoich danych",
       "open": "Otwórz",
       "openFolder": "Otwórz istniejący folder",
-      "openFolderDesc": "Przeczytaj i zapisz go w istniejącym folderze AppFlowy",
+      "openFolderDesc": "Przeczytaj i zapisz go w istniejącym folderze @:appName",
       "folderHintText": "Nazwa folderu",
       "location": "Tworzenie nowego folderu",
-      "locationDesc": "Wybierz nazwę folderu danych AppFlowy",
+      "locationDesc": "Wybierz nazwę folderu danych @:appName",
       "browser": "Przeglądaj",
       "create": "Stwórz",
       "set": "Ustaw",
@@ -367,7 +436,7 @@
       "change": "Zmień",
       "openLocationTooltips": "Otwórz inny katalog danych",
       "openCurrentDataFolder": "Otwórz bieżący katalog danych",
-      "recoverLocationTooltips": "Zresetuj do domyślnego katalogu danych AppFlowy",
+      "recoverLocationTooltips": "Zresetuj do domyślnego katalogu danych @:appName",
       "exportFileSuccess": "Eksportowanie pliku zakończono pomyślnie!",
       "exportFileFail": "Eksport pliku nie powiódł się!",
       "export": "Eksport"
@@ -381,17 +450,6 @@
       "pleaseInputYourStabilityAIKey": "wprowadź swój klucz Stability AI",
       "clickToLogout": "Kliknij, aby wylogować bieżącego użytkownika"
     },
-    "shortcuts": {
-      "shortcutsLabel": "Skróty",
-      "command": "Polecenie",
-      "keyBinding": "Skróty klawiszowe",
-      "addNewCommand": "Dodaj nowe polecenie",
-      "updateShortcutStep": "Naciśnij żądaną kombinację klawiszy i naciśnij ENTER",
-      "shortcutIsAlreadyUsed": "Ten skrót jest już używany w przypadku: {conflict}",
-      "resetToDefault": "Przywróć domyślne skróty klawiszowe",
-      "couldNotLoadErrorMsg": "Nie udało się wczytać skrótów. Spróbuj ponownie",
-      "couldNotSaveErrorMsg": "Nie udało się zapisać skrótów. Spróbuj ponownie"
-    },
     "mobile": {
       "personalInfo": "Informacje Osobiste",
       "username": "Nazwa użytkownika",
@@ -404,6 +462,17 @@
       "userAgreement": "Regulamin Użytkowania",
       "userprofileError": "Nie udało się wczytać profilu użytkownika",
       "userprofileErrorDescription": "Spróbuj wylogować się i zalogować ponownie, aby zobaczyć czy problem nadal występuje."
+    },
+    "shortcuts": {
+      "shortcutsLabel": "Skróty",
+      "command": "Polecenie",
+      "keyBinding": "Skróty klawiszowe",
+      "addNewCommand": "Dodaj nowe polecenie",
+      "updateShortcutStep": "Naciśnij żądaną kombinację klawiszy i naciśnij ENTER",
+      "shortcutIsAlreadyUsed": "Ten skrót jest już używany w przypadku: {conflict}",
+      "resetToDefault": "Przywróć domyślne skróty klawiszowe",
+      "couldNotLoadErrorMsg": "Nie udało się wczytać skrótów. Spróbuj ponownie",
+      "couldNotSaveErrorMsg": "Nie udało się zapisać skrótów. Spróbuj ponownie"
     }
   },
   "grid": {
@@ -821,7 +890,7 @@
     "referencedCalendarPrefix": "Widok"
   },
   "errorDialog": {
-    "title": "Błąd AppFlowy",
+    "title": "Błąd @:appName",
     "howToFixFallback": "Przepraszamy za niedogodności! Zgłoś problem na naszej stronie GitHub, który opisuje Twój błąd.",
     "github": "Zobacz na GitHubie"
   },

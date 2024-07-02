@@ -1,10 +1,11 @@
-import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/openai_client.dart';
-import 'package:mocktail/mocktail.dart';
-import 'dart:convert';
-import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/text_completion.dart';
-import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/error.dart';
-import 'package:http/http.dart' as http;
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/error.dart';
+import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/openai_client.dart';
+import 'package:appflowy/plugins/document/presentation/editor_plugins/openai/service/text_completion.dart';
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 
 class MyMockClient extends Mock implements http.Client {
   @override
@@ -43,7 +44,7 @@ class MockOpenAIRepository extends HttpOpenAIRepository {
     required Future<void> Function() onStart,
     required Future<void> Function(TextCompletionResponse response) onProcess,
     required Future<void> Function() onEnd,
-    required void Function(OpenAIError error) onError,
+    required void Function(AIError error) onError,
     String? suffix,
     int maxTokens = 2048,
     double temperature = 0.3,
@@ -52,7 +53,7 @@ class MockOpenAIRepository extends HttpOpenAIRepository {
     final request = http.Request('POST', OpenAIRequestType.textCompletion.uri);
     final response = await client.send(request);
 
-    var previousSyntax = '';
+    String previousSyntax = '';
     if (response.statusCode == 200) {
       await for (final chunk in response.stream
           .transform(const Utf8Decoder())
@@ -76,6 +77,5 @@ class MockOpenAIRepository extends HttpOpenAIRepository {
         }
       }
     }
-    return;
   }
 }

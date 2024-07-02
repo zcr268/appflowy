@@ -65,6 +65,7 @@ pub fn user_profile_from_af_profile(
     encryption_type,
     uid: profile.uid,
     updated_at: profile.updated_at,
+    ai_model: "".to_string(),
   })
 }
 
@@ -89,6 +90,7 @@ pub fn from_af_workspace_member(member: AFWorkspaceMember) -> WorkspaceMember {
     email: member.email,
     role: from_af_role(member.role),
     name: member.name,
+    avatar_url: member.avatar_url,
   }
 }
 

@@ -4,7 +4,7 @@ use flowy_database2::DatabaseManager;
 use flowy_error::FlowyResult;
 use flowy_folder::manager::FolderManager;
 use flowy_folder_pub::folder_builder::ParentChildViews;
-use flowy_sqlite::kv::StorePreferences;
+use flowy_sqlite::kv::KVStorePreferences;
 use flowy_user::services::authenticate_user::AuthenticateUser;
 use flowy_user::user_manager::UserManager;
 use flowy_user_pub::workspace_service::UserWorkspaceService;
@@ -19,7 +19,7 @@ impl UserDepsResolver {
     authenticate_user: Arc<AuthenticateUser>,
     collab_builder: Arc<AppFlowyCollabBuilder>,
     server_provider: Arc<ServerProvider>,
-    store_preference: Arc<StorePreferences>,
+    store_preference: Arc<KVStorePreferences>,
     database_manager: Arc<DatabaseManager>,
     folder_manager: Arc<FolderManager>,
   ) -> Arc<UserManager> {
@@ -55,8 +55,16 @@ impl UserWorkspaceService for UserWorkspaceServiceImpl {
   ) -> FlowyResult<()> {
     self
       .database_manager
-      .track_database(ids_by_database_id)
+      .update_database_indexing(ids_by_database_id)
       .await?;
+    Ok(())
+  }
+
+  fn did_delete_workspace(&self, workspace_id: String) -> FlowyResult<()> {
+    self
+      .folder_manager
+      .remove_indices_for_workspace(workspace_id)?;
+
     Ok(())
   }
 }

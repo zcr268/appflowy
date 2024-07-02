@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use collab_entity::CollabType;
-use tracing::event;
+use tracing::{event, trace};
 
+use collab_entity::CollabType;
 use collab_integrate::collab_builder::AppFlowyCollabBuilder;
 use flowy_database2::DatabaseManager;
 use flowy_document::manager::DocumentManager;
 use flowy_error::{FlowyError, FlowyResult};
 use flowy_folder::manager::{FolderInitDataSource, FolderManager};
+use flowy_storage::manager::StorageManager;
 use flowy_user::event_map::UserStatusCallback;
 use flowy_user_pub::cloud::{UserCloudConfig, UserCloudServiceProvider};
 use flowy_user_pub::entities::{Authenticator, UserProfile, UserWorkspace};
 use lib_infra::future::{to_fut, Fut};
 
 use crate::integrate::server::{Server, ServerProvider};
-use crate::AppFlowyCoreConfig;
 
 pub(crate) struct UserStatusCallbackImpl {
   pub(crate) collab_builder: Arc<AppFlowyCollabBuilder>,
@@ -23,8 +23,7 @@ pub(crate) struct UserStatusCallbackImpl {
   pub(crate) database_manager: Arc<DatabaseManager>,
   pub(crate) document_manager: Arc<DocumentManager>,
   pub(crate) server_provider: Arc<ServerProvider>,
-  #[allow(dead_code)]
-  pub(crate) config: AppFlowyCoreConfig,
+  pub(crate) storage_manager: Arc<StorageManager>,
 }
 
 impl UserStatusCallback for UserStatusCallbackImpl {
@@ -38,7 +37,6 @@ impl UserStatusCallback for UserStatusCallbackImpl {
   ) -> Fut<FlowyResult<()>> {
     let user_id = user_id.to_owned();
     let user_workspace = user_workspace.clone();
-    let collab_builder = self.collab_builder.clone();
     let folder_manager = self.folder_manager.clone();
     let database_manager = self.database_manager.clone();
     let document_manager = self.document_manager.clone();
@@ -59,7 +57,6 @@ impl UserStatusCallback for UserStatusCallbackImpl {
     }
 
     to_fut(async move {
-      collab_builder.initialize(user_workspace.id.clone());
       folder_manager
         .initialize(
           user_id,
@@ -69,16 +66,8 @@ impl UserStatusCallback for UserStatusCallbackImpl {
           },
         )
         .await?;
-      database_manager
-        .initialize(
-          user_id,
-          user_workspace.id.clone(),
-          user_workspace.workspace_database_object_id,
-        )
-        .await?;
-      document_manager
-        .initialize(user_id, user_workspace.id)
-        .await?;
+      database_manager.initialize(user_id).await?;
+      document_manager.initialize(user_id).await?;
       Ok(())
     })
   }
@@ -104,19 +93,9 @@ impl UserStatusCallback for UserStatusCallbackImpl {
         device_id
       );
 
-      folder_manager
-        .initialize_with_workspace_id(user_id, &user_workspace.id)
-        .await?;
-      database_manager
-        .initialize(
-          user_id,
-          user_workspace.id.clone(),
-          user_workspace.workspace_database_object_id,
-        )
-        .await?;
-      document_manager
-        .initialize(user_id, user_workspace.id)
-        .await?;
+      folder_manager.initialize_with_workspace_id(user_id).await?;
+      database_manager.initialize(user_id).await?;
+      document_manager.initialize(user_id).await?;
       Ok(())
     })
   }
@@ -199,16 +178,12 @@ impl UserStatusCallback for UserStatusCallbackImpl {
         .context("FolderManager error")?;
 
       database_manager
-        .initialize_with_new_user(
-          user_profile.uid,
-          user_workspace.id.clone(),
-          user_workspace.workspace_database_object_id,
-        )
+        .initialize_with_new_user(user_profile.uid)
         .await
         .context("DatabaseManager error")?;
 
       document_manager
-        .initialize_with_new_user(user_profile.uid, user_workspace.id)
+        .initialize_with_new_user(user_profile.uid)
         .await
         .context("DocumentManager error")?;
       Ok(())
@@ -223,34 +198,22 @@ impl UserStatusCallback for UserStatusCallbackImpl {
     })
   }
 
-  fn open_workspace(&self, user_id: i64, user_workspace: &UserWorkspace) -> Fut<FlowyResult<()>> {
-    let user_workspace = user_workspace.clone();
-    let collab_builder = self.collab_builder.clone();
+  fn open_workspace(&self, user_id: i64, _user_workspace: &UserWorkspace) -> Fut<FlowyResult<()>> {
     let folder_manager = self.folder_manager.clone();
     let database_manager = self.database_manager.clone();
     let document_manager = self.document_manager.clone();
 
     to_fut(async move {
-      collab_builder.initialize(user_workspace.id.clone());
-      folder_manager
-        .initialize_with_workspace_id(user_id, &user_workspace.id)
-        .await?;
-
-      database_manager
-        .initialize(
-          user_id,
-          user_workspace.id.clone(),
-          user_workspace.workspace_database_object_id,
-        )
-        .await?;
-      document_manager
-        .initialize(user_id, user_workspace.id)
-        .await?;
+      folder_manager.initialize_with_workspace_id(user_id).await?;
+      database_manager.initialize(user_id).await?;
+      document_manager.initialize(user_id).await?;
       Ok(())
     })
   }
 
   fn did_update_network(&self, reachable: bool) {
+    trace!("Notify did update network: reachable: {}", reachable);
     self.collab_builder.update_network(reachable);
+    self.storage_manager.update_network_reachable(reachable);
   }
 }

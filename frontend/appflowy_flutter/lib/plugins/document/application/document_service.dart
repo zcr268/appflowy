@@ -11,7 +11,7 @@ class DocumentService {
   Future<FlowyResult<void, FlowyError>> createDocument({
     required ViewPB view,
   }) async {
-    final canOpen = await openDocument(viewId: view.id);
+    final canOpen = await openDocument(documentId: view.id);
     if (canOpen.isSuccess) {
       return FlowyResult.success(null);
     }
@@ -21,17 +21,17 @@ class DocumentService {
   }
 
   Future<FlowyResult<DocumentDataPB, FlowyError>> openDocument({
-    required String viewId,
+    required String documentId,
   }) async {
-    final payload = OpenDocumentPayloadPB()..documentId = viewId;
+    final payload = OpenDocumentPayloadPB()..documentId = documentId;
     final result = await DocumentEventOpenDocument(payload).send();
     return result;
   }
 
   Future<FlowyResult<DocumentDataPB, FlowyError>> getDocument({
-    required String viewId,
+    required String documentId,
   }) async {
-    final payload = OpenDocumentPayloadPB()..documentId = viewId;
+    final payload = OpenDocumentPayloadPB()..documentId = documentId;
     final result = await DocumentEventGetDocumentData(payload).send();
     return result;
   }
@@ -54,9 +54,9 @@ class DocumentService {
   }
 
   Future<FlowyResult<void, FlowyError>> closeDocument({
-    required ViewPB view,
+    required String viewId,
   }) async {
-    final payload = ViewIdPB()..value = view.id;
+    final payload = ViewIdPB()..value = viewId;
     final result = await FolderEventCloseView(payload).send();
     return result;
   }
@@ -114,14 +114,14 @@ class DocumentService {
   /// Upload a file to the cloud storage.
   Future<FlowyResult<UploadedFilePB, FlowyError>> uploadFile({
     required String localFilePath,
-    bool isAsync = true,
+    required String documentId,
   }) async {
     final workspace = await FolderEventReadCurrentWorkspace().send();
     return workspace.fold((l) async {
       final payload = UploadFileParamsPB(
         workspaceId: l.id,
         localFilePath: localFilePath,
-        isAsync: isAsync,
+        documentId: documentId,
       );
       final result = await DocumentEventUploadFile(payload).send();
       return result;

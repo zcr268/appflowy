@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:appflowy_backend/dispatch/dispatch.dart';
 import 'package:appflowy_backend/protobuf/flowy-error/errors.pb.dart';
 import 'package:appflowy_backend/protobuf/flowy-folder/protobuf.dart';
+import 'package:appflowy_backend/protobuf/flowy-user/workspace.pb.dart';
 import 'package:appflowy_result/appflowy_result.dart';
 
 class WorkspaceService {
@@ -15,12 +16,15 @@ class WorkspaceService {
     required ViewSectionPB viewSection,
     String? desc,
     int? index,
+    ViewLayoutPB? layout,
+    bool? setAsCurrent,
+    String? viewId,
+    String? extra,
   }) {
     final payload = CreateViewPayloadPB.create()
       ..parentViewId = workspaceId
       ..name = name
-      // only allow document layout for the top-level views
-      ..layout = ViewLayoutPB.Document
+      ..layout = layout ?? ViewLayoutPB.Document
       ..section = viewSection;
 
     if (desc != null) {
@@ -29,6 +33,18 @@ class WorkspaceService {
 
     if (index != null) {
       payload.index = index;
+    }
+
+    if (setAsCurrent != null) {
+      payload.setAsCurrent = setAsCurrent;
+    }
+
+    if (viewId != null) {
+      payload.viewId = viewId;
+    }
+
+    if (extra != null) {
+      payload.extra = extra;
     }
 
     return FolderEventCreateView(payload).send();
@@ -69,5 +85,14 @@ class WorkspaceService {
       ..to = toIndex;
 
     return FolderEventMoveView(payload).send();
+  }
+
+  Future<FlowyResult<WorkspaceUsagePB, FlowyError>> getWorkspaceUsage() {
+    final payload = UserWorkspaceIdPB(workspaceId: workspaceId);
+    return UserEventGetWorkspaceUsage(payload).send();
+  }
+
+  Future<FlowyResult<BillingPortalPB, FlowyError>> getBillingPortal() {
+    return UserEventGetBillingPortal().send();
   }
 }

@@ -1,18 +1,22 @@
+import 'dart:async';
 import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'package:appflowy/core/helpers/helpers.dart';
 import 'package:appflowy/startup/startup.dart';
 import 'package:appflowy/startup/tasks/app_window_size_manager.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:scaled_app/scaled_app.dart';
 import 'package:window_manager/window_manager.dart';
 
 class InitAppWindowTask extends LaunchTask with WindowListener {
-  const InitAppWindowTask({
-    this.title = 'AppFlowy',
-  });
+  InitAppWindowTask({this.title = 'AppFlowy'});
 
   final String title;
+  final windowSizeManager = WindowSizeManager();
 
   @override
   Future<void> initialize(LaunchContext context) async {
@@ -24,7 +28,7 @@ class InitAppWindowTask extends LaunchTask with WindowListener {
     await windowManager.ensureInitialized();
     windowManager.addListener(this);
 
-    final windowSize = await WindowSizeManager().getSize();
+    final windowSize = await windowSizeManager.getSize();
     final windowOptions = WindowOptions(
       size: windowSize,
       minimumSize: const Size(
@@ -38,15 +42,75 @@ class InitAppWindowTask extends LaunchTask with WindowListener {
       title: title,
     );
 
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
+    final position = await windowSizeManager.getPosition();
 
-      final position = await WindowSizeManager().getPosition();
-      if (position != null) {
-        await windowManager.setPosition(position);
-      }
-    });
+    if (PlatformExtension.isWindows) {
+      doWhenWindowReady(() async {
+        appWindow.minSize = windowOptions.minimumSize;
+        appWindow.maxSize = windowOptions.maximumSize;
+        appWindow.size = windowSize;
+
+        if (position != null) {
+          appWindow.position = position;
+        }
+
+        appWindow.show();
+
+        /// on Windows we maximize the window if it was previously closed
+        /// from a maximized state.
+        final isMaximized = await windowSizeManager.getWindowMaximized();
+        if (isMaximized) {
+          appWindow.maximize();
+        }
+      });
+    } else {
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+
+        if (position != null) {
+          await windowManager.setPosition(position);
+        }
+      });
+    }
+
+    unawaited(
+      windowSizeManager.getScaleFactor().then(
+            (v) => ScaledWidgetsFlutterBinding.instance.scaleFactor = (_) => v,
+          ),
+    );
+  }
+
+  @override
+  Future<void> onWindowMaximize() async {
+    super.onWindowMaximize();
+    await windowSizeManager.setWindowMaximized(true);
+    await windowSizeManager.setPosition(Offset.zero);
+  }
+
+  @override
+  Future<void> onWindowUnmaximize() async {
+    super.onWindowUnmaximize();
+    await windowSizeManager.setWindowMaximized(false);
+
+    final position = await windowManager.getPosition();
+    return windowSizeManager.setPosition(position);
+  }
+
+  @override
+  void onWindowEnterFullScreen() async {
+    super.onWindowEnterFullScreen();
+    await windowSizeManager.setWindowMaximized(true);
+    await windowSizeManager.setPosition(Offset.zero);
+  }
+
+  @override
+  Future<void> onWindowLeaveFullScreen() async {
+    super.onWindowLeaveFullScreen();
+    await windowSizeManager.setWindowMaximized(false);
+
+    final position = await windowManager.getPosition();
+    return windowSizeManager.setPosition(position);
   }
 
   @override
@@ -54,15 +118,7 @@ class InitAppWindowTask extends LaunchTask with WindowListener {
     super.onWindowResize();
 
     final currentWindowSize = await windowManager.getSize();
-    return WindowSizeManager().setSize(currentWindowSize);
-  }
-
-  @override
-  void onWindowMaximize() async {
-    super.onWindowMaximize();
-
-    final currentWindowSize = await windowManager.getSize();
-    return WindowSizeManager().setSize(currentWindowSize);
+    return windowSizeManager.setSize(currentWindowSize);
   }
 
   @override
@@ -70,7 +126,7 @@ class InitAppWindowTask extends LaunchTask with WindowListener {
     super.onWindowMoved();
 
     final position = await windowManager.getPosition();
-    return WindowSizeManager().setPosition(position);
+    return windowSizeManager.setPosition(position);
   }
 
   @override

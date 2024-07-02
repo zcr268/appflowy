@@ -58,9 +58,8 @@ class AppFlowyUnitTest {
   }
 
   WorkspacePB get currentWorkspace => workspace;
-
   Future<void> _loadWorkspace() async {
-    final result = await userService.getCurrentWorkspace();
+    final result = await UserBackendService.getCurrentWorkspace();
     result.fold(
       (value) => workspace = value,
       (error) {
@@ -80,15 +79,6 @@ class AppFlowyUnitTest {
     );
     return result.fold(
       (app) => app,
-      (error) => throw Exception(error),
-    );
-  }
-
-  Future<List<ViewPB>> loadApps() async {
-    final result = await workspaceService.getPublicViews();
-
-    return result.fold(
-      (apps) => apps,
       (error) => throw Exception(error),
     );
   }

@@ -130,11 +130,6 @@ class NavigatorAlertDialog extends StatefulWidget {
 
 class _CreateFlowyAlertDialog extends State<NavigatorAlertDialog> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return StyledDialog(
       child: Column(
@@ -214,7 +209,7 @@ class NavigatorOkCancelDialog extends StatelessWidget {
             ),
             VSpace(Insets.sm * 1.5),
             Container(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               height: 1,
             ),
             VSpace(Insets.m * 1.5),

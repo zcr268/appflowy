@@ -138,7 +138,7 @@ impl Chat {
     // Save message to disk
     save_and_notify_message(uid, &self.chat_id, &self.user_service, question.clone())?;
 
-    let format = params.format.clone().unwrap_or_default().into();
+    let format = params.format.clone().map(Into::into).unwrap_or_default();
 
     self.stream_response(
       params.answer_stream_port,
@@ -171,7 +171,7 @@ impl Chat {
       .store(false, std::sync::atomic::Ordering::SeqCst);
     self.stream_buffer.lock().await.clear();
 
-    let format = format.unwrap_or_default().into();
+    let format = format.map(Into::into).unwrap_or_default();
 
     let answer_stream_buffer = self.stream_buffer.clone();
     let uid = self.user_service.user_id()?;
@@ -255,6 +255,14 @@ impl Chat {
           error!("[Chat] failed to start streaming: {}", err);
           if err.is_ai_response_limit_exceeded() {
             let _ = answer_sink.send("AI_RESPONSE_LIMIT".to_string()).await;
+          } else if err.is_ai_image_response_limit_exceeded() {
+            let _ = answer_sink
+              .send("AI_IMAGE_RESPONSE_LIMIT".to_string())
+              .await;
+          } else if err.is_ai_max_required() {
+            let _ = answer_sink
+              .send(format!("AI_MAX_REQUIRED:{}", err.msg))
+              .await;
           } else {
             let _ = answer_sink.send(format!("error:{}", err)).await;
           }

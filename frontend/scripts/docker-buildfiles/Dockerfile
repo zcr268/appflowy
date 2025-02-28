@@ -29,7 +29,7 @@ RUN source ~/.cargo/env && \
 RUN sudo pacman -S --noconfirm git tar gtk3
 RUN curl -sSfL \
     --output flutter.tar.xz \
-    https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.22.0-stable.tar.xz && \
+    https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.4-stable.tar.xz && \
     tar -xf flutter.tar.xz && \
     rm flutter.tar.xz
 RUN flutter config --enable-linux-desktop
@@ -79,7 +79,7 @@ USER $user
 WORKDIR /home/$user
 COPY --from=builder /appflowy/frontend/appflowy_flutter/build/linux/x64/release/bundle .
 RUN xdg-user-dirs-update && \
-    test -e ./AppFlowy && \
-    file ./AppFlowy
+    test -e ./appflowy && \
+    file ./appflowy
 
-CMD ["./AppFlowy"]
+CMD ["./appflowy"]

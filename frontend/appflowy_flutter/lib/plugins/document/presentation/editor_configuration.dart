@@ -31,6 +31,10 @@ final Set<String> supportSlashMenuNodeTypes = {
   SimpleTableBlockKeys.type,
   SimpleTableRowBlockKeys.type,
   SimpleTableCellBlockKeys.type,
+
+  // Columns
+  SimpleColumnsBlockKeys.type,
+  SimpleColumnBlockKeys.type,
 };
 
 /// Build the block component builders.
@@ -203,24 +207,33 @@ void _customBlockOptionActions(
         } else {
           top += 2.0;
         }
-        return Padding(
-          padding: EdgeInsets.only(top: top),
-          child: BlockActionList(
-            blockComponentContext: context,
-            blockComponentState: state,
-            editorState: editorState,
-            blockComponentBuilder: builders,
-            actions: actions,
-            showSlashMenu: slashMenuItemsBuilder != null
-                ? () => customAppFlowySlashCommand(
-                      itemsBuilder: slashMenuItemsBuilder,
-                      shouldInsertSlash: false,
-                      deleteKeywordsByDefault: true,
-                      style: styleCustomizer.selectionMenuStyleBuilder(),
-                      supportSlashMenuNodeTypes: supportSlashMenuNodeTypes,
-                    ).handler.call(editorState)
-                : () {},
-          ),
+        return ValueListenableBuilder(
+          valueListenable: editorState.editableNotifier,
+          builder: (_, editable, child) {
+            return Opacity(
+              opacity: editable ? 1.0 : 0.0,
+              child: Padding(
+                padding: EdgeInsets.only(top: top),
+                child: BlockActionList(
+                  blockComponentContext: context,
+                  blockComponentState: state,
+                  editorState: editorState,
+                  blockComponentBuilder: builders,
+                  actions: actions,
+                  showSlashMenu: slashMenuItemsBuilder != null
+                      ? () => customAppFlowySlashCommand(
+                            itemsBuilder: slashMenuItemsBuilder,
+                            shouldInsertSlash: false,
+                            deleteKeywordsByDefault: true,
+                            style: styleCustomizer.selectionMenuStyleBuilder(),
+                            supportSlashMenuNodeTypes:
+                                supportSlashMenuNodeTypes,
+                          ).handler.call(editorState)
+                      : () {},
+                ),
+              ),
+            );
+          },
         );
       };
     }
@@ -362,6 +375,14 @@ Map<String, BlockComponentBuilder> _buildBlockComponentBuilderMap(
       context,
       configuration,
       alwaysDistributeColumnWidths: alwaysDistributeSimpleTableColumnWidths,
+    ),
+    SimpleColumnsBlockKeys.type: _buildSimpleColumnsBlockComponentBuilder(
+      context,
+      configuration,
+    ),
+    SimpleColumnBlockKeys.type: _buildSimpleColumnBlockComponentBuilder(
+      context,
+      configuration,
     ),
   };
 
@@ -933,6 +954,28 @@ SubPageBlockComponentBuilder _buildSubPageBlockComponentBuilder(
         }
         return configuration.padding(node);
       },
+    ),
+  );
+}
+
+SimpleColumnsBlockComponentBuilder _buildSimpleColumnsBlockComponentBuilder(
+  BuildContext context,
+  BlockComponentConfiguration configuration,
+) {
+  return SimpleColumnsBlockComponentBuilder(
+    configuration: configuration.copyWith(
+      padding: (_) => EdgeInsets.zero,
+    ),
+  );
+}
+
+SimpleColumnBlockComponentBuilder _buildSimpleColumnBlockComponentBuilder(
+  BuildContext context,
+  BlockComponentConfiguration configuration,
+) {
+  return SimpleColumnBlockComponentBuilder(
+    configuration: configuration.copyWith(
+      padding: (_) => EdgeInsets.zero,
     ),
   );
 }

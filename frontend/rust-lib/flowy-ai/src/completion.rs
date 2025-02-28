@@ -104,8 +104,10 @@ impl CompletionTask {
           custom_prompt: None,
           metadata: Some(CompletionMetadata {
             object_id: self.context.object_id,
+            workspace_id: None,
             rag_ids: Some(self.context.rag_ids),
           }),
+          format: Default::default(),
         };
 
         info!("start completion: {:?}", params);
@@ -147,6 +149,8 @@ impl CompletionTask {
 async fn handle_error(sink: &mut IsolateSink, error: FlowyError) {
   if error.is_ai_response_limit_exceeded() {
     let _ = sink.send("AI_RESPONSE_LIMIT".to_string()).await;
+  } else if error.is_ai_image_response_limit_exceeded() {
+    let _ = sink.send("AI_IMAGE_RESPONSE_LIMIT".to_string()).await;
   } else {
     let _ = sink.send(format!("error:{}", error)).await;
   }

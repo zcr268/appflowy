@@ -13,7 +13,7 @@ use crate::code::ErrorCode;
 pub type FlowyResult<T> = anyhow::Result<T, FlowyError>;
 
 #[derive(Debug, Default, Clone, ProtoBuf, Error)]
-#[error("{msg}")]
+#[error("code:{code}, message:{msg}")]
 pub struct FlowyError {
   #[pb(index = 1)]
   pub code: ErrorCode,
@@ -91,6 +91,14 @@ impl FlowyError {
     self.code == ErrorCode::AIResponseLimitExceeded
   }
 
+  pub fn is_ai_image_response_limit_exceeded(&self) -> bool {
+    self.code == ErrorCode::AIImageResponseLimitExceeded
+  }
+
+  pub fn is_ai_max_required(&self) -> bool {
+    self.code == ErrorCode::AIMaxRequired
+  }
+
   static_flowy_error!(internal, ErrorCode::Internal);
   static_flowy_error!(record_not_found, ErrorCode::RecordNotFound);
   static_flowy_error!(workspace_initialize, ErrorCode::WorkspaceInitializeError);
@@ -141,6 +149,8 @@ impl FlowyError {
   static_flowy_error!(local_ai_unavailable, ErrorCode::LocalAIUnavailable);
   static_flowy_error!(response_timeout, ErrorCode::ResponseTimeout);
   static_flowy_error!(file_storage_limit, ErrorCode::FileStorageLimitExceeded);
+
+  static_flowy_error!(view_is_locked, ErrorCode::ViewIsLocked);
 }
 
 impl std::convert::From<ErrorCode> for FlowyError {
